@@ -9,6 +9,7 @@ const HardwarePage = (() => {
   let filterPlatform = '';
   let filterType = '';
   let filterCondition = '';
+  let selectedIds = new Set();
 
   const TYPES = ['Console', 'Handheld Console', 'Controller / Gamepad', 'Arcade Stick', 'Light Gun', 'Memory Card', 'Peripheral', 'Cable / Adapter', 'Storage', 'Accessory', 'Other'];
   const CONDITIONS = ['Sealed', 'Mint', 'Near Mint', 'Very Good', 'Good', 'Fair', 'Poor / Damaged', 'For Parts / Repair'];
@@ -68,7 +69,10 @@ const HardwarePage = (() => {
     tbody.innerHTML = sorted.map(h => {
       const diff = priceDiff(h.price_paid, h.price_value, h.price_paid_currency, h.price_value_currency);
       const icon = TYPE_ICONS[h.type] || '🕹️';
-      return `<tr onclick="HardwarePage.openDetail(${h.id})">
+      const added = h.created_at ? h.created_at.slice(0, 7) : '—';
+      const sel = selectedIds.has(h.id);
+      return `<tr class="${sel ? 'row-selected' : ''}" onclick="HardwarePage.openDetail(${h.id})">
+        <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${h.id}" ${sel ? 'checked' : ''} onchange="HardwarePage.toggleSelect(${h.id}, this.checked)"></td>
         <td class="td-thumb"><div class="row-thumb-placeholder">${icon}</div></td>
         <td>
           <div class="td-title">${esc(h.name)}</div>
@@ -81,6 +85,7 @@ const HardwarePage = (() => {
         <td>${h.quantity || 1}</td>
         <td>${h.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid, h.price_paid_currency)}</span>` : '—'}</td>
         <td>${h.price_value != null ? `<span class="price-value">${Currency.formatWithBase(h.price_value, h.price_value_currency)}</span>${diff ? '<br>' + diff : ''}` : '—'}</td>
+        <td style="color:var(--text-muted);font-size:12px">${added}</td>
         <td onclick="event.stopPropagation()">
           <div class="row-actions">
             <button class="btn btn-ghost btn-sm btn-icon" title="Refresh value" id="hwRefreshBtn-${h.id}" onclick="HardwarePage.refreshValue(${h.id}, '${esc(h.name).replace(/'/g, "\\'")}', '${esc(h.condition || '').replace(/'/g, "\\'")}')">↻</button>
@@ -131,6 +136,71 @@ const HardwarePage = (() => {
         ${conditionBadge(h.condition)}
       </div>`;
     }).join('');
+  }
+
+  function updateBatchBar() {
+    const bar = document.getElementById('hwBatchBar');
+    const cnt = document.getElementById('hwBatchCount');
+    if (!bar) return;
+    if (selectedIds.size > 0) {
+      bar.classList.add('visible');
+      cnt.textContent = `${selectedIds.size} selected`;
+    } else {
+      bar.classList.remove('visible');
+    }
+    const allBox = document.getElementById('hwSelectAll');
+    if (allBox) allBox.checked = selectedIds.size > 0 && selectedIds.size === allItems.length;
+  }
+
+  function toggleSelect(id, checked) {
+    if (checked) selectedIds.add(id); else selectedIds.delete(id);
+    const row = document.querySelector(`#hardwareTable .row-check[data-id="${id}"]`)?.closest('tr');
+    if (row) row.classList.toggle('row-selected', checked);
+    updateBatchBar();
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    renderTable();
+  }
+
+  async function batchDelete() {
+    if (!selectedIds.size) return;
+    if (!confirm(`Delete ${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''}?`)) return;
+    try {
+      await API.batchDeleteHardware([...selectedIds]);
+      toast(`Deleted ${selectedIds.size} items`, 'success');
+      selectedIds.clear();
+      load();
+      App.loadSidebarCounts();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function batchEdit() {
+    if (!selectedIds.size) return;
+    ['batchHwPlatform','batchHwWhere','batchHwDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['batchHwType','batchHwCondition','batchHwWorking'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    openModal('hwBatchModal');
+  }
+
+  async function saveBatchEdit() {
+    const data = {
+      platform:          document.getElementById('batchHwPlatform')?.value.trim() || null,
+      type:              document.getElementById('batchHwType')?.value || null,
+      condition:         document.getElementById('batchHwCondition')?.value || null,
+      working_condition: document.getElementById('batchHwWorking')?.value || null,
+      where_purchased:   document.getElementById('batchHwWhere')?.value.trim() || null,
+      date_acquired:     document.getElementById('batchHwDate')?.value || null,
+    };
+    Object.keys(data).forEach(k => { if (!data[k]) delete data[k]; });
+    if (!Object.keys(data).length) { toast('No fields filled in', 'error'); return; }
+    try {
+      const r = await API.batchEditHardware([...selectedIds], data);
+      toast(`Updated ${r.updated} items`, 'success');
+      closeModal('hwBatchModal');
+      selectedIds.clear();
+      load();
+    } catch (e) { toast(e.message, 'error'); }
   }
 
   function setSort(key) {
@@ -388,6 +458,13 @@ const HardwarePage = (() => {
     wireConversion('hwPricePaid', 'hwPaidCurrency', 'hwPaidConversion');
     wireConversion('hwPriceValue', 'hwValueCurrency', 'hwValueConversion');
 
+    document.getElementById('hwSelectAll')?.addEventListener('change', function () {
+      if (this.checked) allItems.forEach(h => selectedIds.add(h.id));
+      else selectedIds.clear();
+      renderTable();
+    });
+    document.getElementById('saveHwBatchBtn')?.addEventListener('click', saveBatchEdit);
+
     document.getElementById('hwPcSearchBtn')?.addEventListener('click', searchPrices);
     document.getElementById('hwPcSearch')?.addEventListener('keydown', e => { if (e.key === 'Enter') searchPrices(); });
     document.getElementById('saveHwBtn')?.addEventListener('click', saveItem);
@@ -399,5 +476,5 @@ const HardwarePage = (() => {
     document.getElementById('hwDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwDetailModal'); });
   }
 
-  return { init, load, openAdd, openEdit, openDetail, deleteItem, searchPrices, applyEbayPrice, refreshValue, refreshAllValues };
+  return { init, load, openAdd, openEdit, openDetail, deleteItem, searchPrices, applyEbayPrice, refreshValue, refreshAllValues, toggleSelect, clearSelection, batchDelete, batchEdit };
 })();

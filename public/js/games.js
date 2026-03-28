@@ -9,6 +9,7 @@ const GamesPage = (() => {
   let filterCondition = '';
   let filterGenre = '';
   let filterFinished = '';
+  let selectedIds = new Set();
 
   const CONDITIONS = ['Sealed', 'Complete (CIB)', 'Complete (No Manual)', 'Loose', 'Box Only', 'Manual Only', 'Graded', 'Poor / Damaged'];
   const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'NTSC-U/C', 'Multi-Region'];
@@ -127,7 +128,10 @@ const GamesPage = (() => {
       const thumb = g.cover_url
         ? `<img src="${esc(g.cover_url)}" alt="" class="row-thumb" loading="lazy">`
         : `<div class="row-thumb-placeholder">🎮</div>`;
-      return `<tr onclick="GamesPage.openDetail(${g.id})">
+      const added = g.created_at ? g.created_at.slice(0, 7) : '—';
+      const sel = selectedIds.has(g.id);
+      return `<tr class="${sel ? 'row-selected' : ''}" onclick="GamesPage.openDetail(${g.id})">
+        <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${g.id}" ${sel ? 'checked' : ''} onchange="GamesPage.toggleSelect(${g.id}, this.checked)"></td>
         <td class="td-thumb">${thumb}</td>
         <td>
           <div class="td-title">${esc(g.title)}</div>
@@ -141,6 +145,7 @@ const GamesPage = (() => {
         <td>${g.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(g.price_paid, g.price_paid_currency)}</span>` : '—'}</td>
         <td>${g.price_value != null ? `<span class="price-value">${Currency.formatWithBase(g.price_value, g.price_value_currency)}</span>${diff ? '<br>' + diff : ''}` : '—'}</td>
         <td>${checkmark(g.finished)}</td>
+        <td style="color:var(--text-muted);font-size:12px">${added}</td>
         <td onclick="event.stopPropagation()">
           <div class="row-actions">
             <button class="btn btn-ghost btn-sm btn-icon" title="Refresh value" id="refreshBtn-${g.id}" onclick="GamesPage.refreshValue(${g.id}, '${esc(g.title).replace(/'/g, "\\'")}', '${esc(g.platform || '').replace(/'/g, "\\'")}', '${esc(g.condition || '').replace(/'/g, "\\'")}')">↻</button>
@@ -189,6 +194,74 @@ const GamesPage = (() => {
         ${g.finished ? '<div class="game-card-check">✓</div>' : ''}
       </div>`;
     }).join('');
+  }
+
+  function updateBatchBar() {
+    const bar = document.getElementById('gamesBatchBar');
+    const cnt = document.getElementById('gamesBatchCount');
+    if (!bar) return;
+    if (selectedIds.size > 0) {
+      bar.classList.add('visible');
+      cnt.textContent = `${selectedIds.size} selected`;
+    } else {
+      bar.classList.remove('visible');
+    }
+    const allBox = document.getElementById('gamesSelectAll');
+    if (allBox) allBox.checked = selectedIds.size > 0 && selectedIds.size === allGames.length;
+  }
+
+  function toggleSelect(id, checked) {
+    if (checked) selectedIds.add(id); else selectedIds.delete(id);
+    const row = document.querySelector(`#gamesTable .row-check[data-id="${id}"]`)?.closest('tr');
+    if (row) row.classList.toggle('row-selected', checked);
+    updateBatchBar();
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    renderTable();
+  }
+
+  async function batchDelete() {
+    if (!selectedIds.size) return;
+    if (!confirm(`Delete ${selectedIds.size} game${selectedIds.size > 1 ? 's' : ''}?`)) return;
+    try {
+      await API.batchDeleteGames([...selectedIds]);
+      toast(`Deleted ${selectedIds.size} games`, 'success');
+      selectedIds.clear();
+      load();
+      App.loadSidebarCounts();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function batchEdit() {
+    if (!selectedIds.size) return;
+    // Reset batch modal fields
+    ['batchGamePlatform','batchGameEdition','batchGameWhere','batchGameDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['batchGameCondition','batchGameGenre','batchGameFinished'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    openModal('gamesBatchModal');
+  }
+
+  async function saveBatchEdit() {
+    const data = {
+      platform:        document.getElementById('batchGamePlatform')?.value.trim() || null,
+      condition:       document.getElementById('batchGameCondition')?.value || null,
+      edition:         document.getElementById('batchGameEdition')?.value.trim() || null,
+      genre:           document.getElementById('batchGameGenre')?.value || null,
+      where_purchased: document.getElementById('batchGameWhere')?.value.trim() || null,
+      date_acquired:   document.getElementById('batchGameDate')?.value || null,
+      finished:        document.getElementById('batchGameFinished')?.value === '' ? null : document.getElementById('batchGameFinished')?.value,
+    };
+    // Remove nulls — only send fields that were actually set
+    Object.keys(data).forEach(k => { if (data[k] === null || data[k] === '') delete data[k]; });
+    if (!Object.keys(data).length) { toast('No fields filled in', 'error'); return; }
+    try {
+      const r = await API.batchEditGames([...selectedIds], data);
+      toast(`Updated ${r.updated} games`, 'success');
+      closeModal('gamesBatchModal');
+      selectedIds.clear();
+      load();
+    } catch (e) { toast(e.message, 'error'); }
   }
 
   function setSort(key) {
@@ -604,6 +677,16 @@ const GamesPage = (() => {
     }
     wireConversion('gamePricePaid', 'gamePaidCurrency', 'gamePaidConversion');
 
+    // Select-all checkbox
+    document.getElementById('gamesSelectAll')?.addEventListener('change', function () {
+      if (this.checked) allGames.forEach(g => selectedIds.add(g.id));
+      else selectedIds.clear();
+      renderTable();
+    });
+
+    // Batch save
+    document.getElementById('saveGamesBatchBtn')?.addEventListener('click', saveBatchEdit);
+
     // Form submit
     document.getElementById('saveGameBtn')?.addEventListener('click', saveGame);
 
@@ -657,5 +740,5 @@ const GamesPage = (() => {
     }
   }
 
-  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker };
+  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker, toggleSelect, clearSelection, batchDelete, batchEdit };
 })();

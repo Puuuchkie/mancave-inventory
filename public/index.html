@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Man Cave Inventory</title>
-  <link rel="stylesheet" href="/css/style.css?v=11">
+  <link rel="stylesheet" href="/css/style.css?v=12">
 </head>
 <body>
 <div class="app-layout">
@@ -142,9 +142,20 @@
         <div class="table-header">
           <span class="table-count" id="gamesCount">0 titles</span>
         </div>
+        <!-- Batch action bar -->
+        <div class="batch-bar" id="gamesBatchBar">
+          <span class="batch-count" id="gamesBatchCount"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="GamesPage.batchEdit()">✎ Edit</button>
+            <button class="btn btn-danger btn-sm"    onclick="GamesPage.batchDelete()">✕ Delete</button>
+            <button class="btn btn-ghost btn-sm"     onclick="GamesPage.clearSelection()">Cancel</button>
+          </div>
+        </div>
+
         <table id="gamesTable">
           <thead>
             <tr>
+              <th style="width:36px"><input type="checkbox" id="gamesSelectAll" title="Select all"></th>
               <th style="width:48px"></th>
               <th data-sort="title">Title <span class="sort-icon">↕</span></th>
               <th data-sort="platform">Platform <span class="sort-icon">↕</span></th>
@@ -154,7 +165,8 @@
               <th data-sort="quantity">Qty <span class="sort-icon">↕</span></th>
               <th data-sort="price_paid">Paid <span class="sort-icon">↕</span></th>
               <th data-sort="price_value">Value <span class="sort-icon">↕</span></th>
-              <th data-sort="finished">Completed <span class="sort-icon">↕</span></th>
+              <th data-sort="finished">Done <span class="sort-icon">↕</span></th>
+              <th data-sort="created_at">Added <span class="sort-icon">↕</span></th>
               <th style="width:100px"></th>
             </tr>
           </thead>
@@ -185,9 +197,20 @@
         <div class="table-header">
           <span class="table-count" id="hardwareCount">0 items</span>
         </div>
+        <!-- Batch action bar -->
+        <div class="batch-bar" id="hwBatchBar">
+          <span class="batch-count" id="hwBatchCount"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="HardwarePage.batchEdit()">✎ Edit</button>
+            <button class="btn btn-danger btn-sm"    onclick="HardwarePage.batchDelete()">✕ Delete</button>
+            <button class="btn btn-ghost btn-sm"     onclick="HardwarePage.clearSelection()">Cancel</button>
+          </div>
+        </div>
+
         <table id="hardwareTable">
           <thead>
             <tr>
+              <th style="width:36px"><input type="checkbox" id="hwSelectAll" title="Select all"></th>
               <th style="width:48px"></th>
               <th data-sort="name">Name / Model <span class="sort-icon">↕</span></th>
               <th data-sort="type">Type <span class="sort-icon">↕</span></th>
@@ -197,11 +220,12 @@
               <th data-sort="quantity">Qty <span class="sort-icon">↕</span></th>
               <th data-sort="price_paid">Paid <span class="sort-icon">↕</span></th>
               <th data-sort="price_value">Value <span class="sort-icon">↕</span></th>
+              <th data-sort="created_at">Added <span class="sort-icon">↕</span></th>
               <th style="width:100px"></th>
             </tr>
           </thead>
           <tbody id="hardwareTableBody">
-            <tr><td colspan="10" class="loading"><div class="spinner"></div> Loading...</td></tr>
+            <tr><td colspan="12" class="loading"><div class="spinner"></div> Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -782,6 +806,128 @@
   </div>
 </div>
 
+<!-- ===== GAMES BATCH EDIT MODAL ===== -->
+<div class="modal-overlay" id="gamesBatchModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title">Batch Edit Games</span>
+      <button class="modal-close" data-close-modal="gamesBatchModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Only filled fields will be updated. Leave blank to keep existing values.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Platform</label>
+          <input type="text" class="form-control" id="batchGamePlatform" list="platformList" placeholder="Leave blank to keep">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Condition</label>
+          <select class="form-control" id="batchGameCondition">
+            <option value="">— Keep existing —</option>
+            <option>Sealed</option><option>Complete (CIB)</option><option>Complete (No Manual)</option>
+            <option>Loose</option><option>Box Only</option><option>Manual Only</option>
+            <option>Graded</option><option>Poor / Damaged</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Edition</label>
+          <input type="text" class="form-control" id="batchGameEdition" placeholder="Leave blank to keep">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Genre</label>
+          <select class="form-control" id="batchGameGenre">
+            <option value="">— Keep existing —</option>
+            <option>Action</option><option>Action-Adventure</option><option>Adventure</option>
+            <option>Beat 'em Up</option><option>Fighting</option><option>Horror</option>
+            <option>JRPG</option><option>Platformer</option><option>Puzzle</option>
+            <option>Racing</option><option>RPG</option><option>Shoot 'em Up</option>
+            <option>Shooter (FPS)</option><option>Simulation</option><option>Sports</option>
+            <option>Strategy</option><option>Survival</option><option>Visual Novel</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Where Purchased</label>
+          <input type="text" class="form-control" id="batchGameWhere" placeholder="Leave blank to keep">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date Acquired</label>
+          <input type="date" class="form-control" id="batchGameDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Finished</label>
+          <select class="form-control" id="batchGameFinished">
+            <option value="">— Keep existing —</option>
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="gamesBatchModal">Cancel</button>
+      <button class="btn btn-primary" id="saveGamesBatchBtn">Apply to Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HARDWARE BATCH EDIT MODAL ===== -->
+<div class="modal-overlay" id="hwBatchModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title">Batch Edit Hardware</span>
+      <button class="modal-close" data-close-modal="hwBatchModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Only filled fields will be updated. Leave blank to keep existing values.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Platform</label>
+          <input type="text" class="form-control" id="batchHwPlatform" list="hwPlatformList" placeholder="Leave blank to keep">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-control" id="batchHwType">
+            <option value="">— Keep existing —</option>
+            <option>Console</option><option>Handheld Console</option><option>Controller / Gamepad</option>
+            <option>Arcade Stick</option><option>Light Gun</option><option>Memory Card</option>
+            <option>Peripheral</option><option>Cable / Adapter</option><option>Storage</option>
+            <option>Accessory</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Condition</label>
+          <select class="form-control" id="batchHwCondition">
+            <option value="">— Keep existing —</option>
+            <option>Sealed</option><option>Mint</option><option>Near Mint</option>
+            <option>Very Good</option><option>Good</option><option>Fair</option>
+            <option>Poor / Damaged</option><option>For Parts / Repair</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Working Condition</label>
+          <select class="form-control" id="batchHwWorking">
+            <option value="">— Keep existing —</option>
+            <option>Fully Working</option><option>Partially Working</option>
+            <option>Needs Repair</option><option>For Parts / Not Working</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Where Purchased</label>
+          <input type="text" class="form-control" id="batchHwWhere" placeholder="Leave blank to keep">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date Acquired</label>
+          <input type="date" class="form-control" id="batchHwDate">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="hwBatchModal">Cancel</button>
+      <button class="btn btn-primary" id="saveHwBatchBtn">Apply to Selected</button>
+    </div>
+  </div>
+</div>
+
 <!-- Floating Action Buttons (mobile only) -->
 <button class="fab" id="gameFab" aria-label="Add game">+</button>
 <button class="fab" id="hwFab" aria-label="Add hardware">+</button>
@@ -789,15 +935,15 @@
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=11"></script>
-<script src="/js/currency.js?v=11"></script>
-<script src="/js/platforms.js?v=11"></script>
-<script src="/js/utils.js?v=11"></script>
-<script src="/js/dashboard.js?v=11"></script>
-<script src="/js/games.js?v=11"></script>
-<script src="/js/hardware.js?v=11"></script>
-<script src="/js/logs.js?v=11"></script>
-<script src="/js/app.js?v=11"></script>
+<script src="/js/api.js?v=12"></script>
+<script src="/js/currency.js?v=12"></script>
+<script src="/js/platforms.js?v=12"></script>
+<script src="/js/utils.js?v=12"></script>
+<script src="/js/dashboard.js?v=12"></script>
+<script src="/js/games.js?v=12"></script>
+<script src="/js/hardware.js?v=12"></script>
+<script src="/js/logs.js?v=12"></script>
+<script src="/js/app.js?v=12"></script>
 
 </body>
 </html>

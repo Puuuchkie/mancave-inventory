@@ -20,6 +20,8 @@ const API = {
   createGame: (data) => API.request('POST', '/api/games', data),
   updateGame: (id, data) => API.request('PUT', `/api/games/${id}`, data),
   deleteGame: (id) => API.request('DELETE', `/api/games/${id}`),
+  batchDeleteGames: (ids) => API.request('DELETE', '/api/games/batch/delete', { ids }),
+  batchEditGames:   (ids, data) => API.request('PATCH',  '/api/games/batch/edit',   { ids, data }),
 
   // Hardware
   getHardware: (params = {}) => API.request('GET', '/api/hardware?' + new URLSearchParams(params)),
@@ -29,6 +31,8 @@ const API = {
   createHardware: (data) => API.request('POST', '/api/hardware', data),
   updateHardware: (id, data) => API.request('PUT', `/api/hardware/${id}`, data),
   deleteHardware: (id) => API.request('DELETE', `/api/hardware/${id}`),
+  batchDeleteHardware: (ids) => API.request('DELETE', '/api/hardware/batch/delete', { ids }),
+  batchEditHardware:   (ids, data) => API.request('PATCH',  '/api/hardware/batch/edit',   { ids, data }),
 
   // Game DB autocomplete (IGDB)
   searchGameDB: (q, platform) => API.request('GET', '/api/autocomplete/search?' + new URLSearchParams(platform ? { q, platform } : { q })),

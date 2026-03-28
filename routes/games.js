@@ -166,4 +166,34 @@ router.delete('/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// DELETE batch
+router.delete('/batch/delete', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids array required' });
+  const del = db.transaction(() => {
+    for (const id of ids) db.prepare('DELETE FROM games WHERE id = ?').run(id);
+  });
+  del();
+  res.json({ deleted: ids.length });
+});
+
+// PATCH batch edit — only updates fields that are explicitly provided (non-null)
+router.patch('/batch/edit', (req, res) => {
+  const { ids, data } = req.body;
+  if (!Array.isArray(ids) || !ids.length || !data) return res.status(400).json({ error: 'ids and data required' });
+
+  const allowed = ['platform', 'condition', 'edition', 'region', 'genre', 'finished', 'where_purchased', 'date_acquired'];
+  const fields = Object.keys(data).filter(k => allowed.includes(k) && data[k] !== null && data[k] !== '');
+  if (!fields.length) return res.status(400).json({ error: 'No valid fields to update' });
+
+  const set = fields.map(f => `${f} = ?`).join(', ') + ', updated_at = datetime(\'now\')';
+  const vals = fields.map(f => f === 'finished' ? (data[f] ? 1 : 0) : data[f]);
+
+  const update = db.transaction(() => {
+    for (const id of ids) db.prepare(`UPDATE games SET ${set} WHERE id = ?`).run(...vals, id);
+  });
+  update();
+  res.json({ updated: ids.length });
+});
+
 module.exports = router;
