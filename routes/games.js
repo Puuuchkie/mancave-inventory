@@ -182,7 +182,7 @@ router.patch('/batch/edit', (req, res) => {
   const { ids, data } = req.body;
   if (!Array.isArray(ids) || !ids.length || !data) return res.status(400).json({ error: 'ids and data required' });
 
-  const allowed = ['platform', 'condition', 'edition', 'region', 'genre', 'finished', 'where_purchased', 'date_acquired'];
+  const allowed = ['platform', 'condition', 'edition', 'region', 'genre', 'finished', 'where_purchased', 'date_acquired', 'price_paid_currency', 'price_value_currency'];
   const fields = Object.keys(data).filter(k => allowed.includes(k) && data[k] !== null && data[k] !== '');
   if (!fields.length) return res.status(400).json({ error: 'No valid fields to update' });
 

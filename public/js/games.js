@@ -238,19 +238,33 @@ const GamesPage = (() => {
     if (!selectedIds.size) return;
     // Reset batch modal fields
     ['batchGamePlatform','batchGameEdition','batchGameWhere','batchGameDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    ['batchGameCondition','batchGameGenre','batchGameFinished'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['batchGameCondition','batchGameGenre','batchGameFinished','batchGamePaidCurrency','batchGameValueCurrency'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    populateBatchCurrencySelects();
     openModal('gamesBatchModal');
+  }
+
+  function populateBatchCurrencySelects() {
+    ['batchGamePaidCurrency','batchGameValueCurrency'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const keep = '<option value="">— Keep existing —</option>';
+      Currency.populateSelect(el);
+      el.insertAdjacentHTML('afterbegin', keep);
+      el.value = '';
+    });
   }
 
   async function saveBatchEdit() {
     const data = {
-      platform:        document.getElementById('batchGamePlatform')?.value.trim() || null,
-      condition:       document.getElementById('batchGameCondition')?.value || null,
-      edition:         document.getElementById('batchGameEdition')?.value.trim() || null,
-      genre:           document.getElementById('batchGameGenre')?.value || null,
-      where_purchased: document.getElementById('batchGameWhere')?.value.trim() || null,
-      date_acquired:   document.getElementById('batchGameDate')?.value || null,
-      finished:        document.getElementById('batchGameFinished')?.value === '' ? null : document.getElementById('batchGameFinished')?.value,
+      platform:             document.getElementById('batchGamePlatform')?.value.trim() || null,
+      condition:            document.getElementById('batchGameCondition')?.value || null,
+      edition:              document.getElementById('batchGameEdition')?.value.trim() || null,
+      genre:                document.getElementById('batchGameGenre')?.value || null,
+      where_purchased:      document.getElementById('batchGameWhere')?.value.trim() || null,
+      date_acquired:        document.getElementById('batchGameDate')?.value || null,
+      finished:             document.getElementById('batchGameFinished')?.value === '' ? null : document.getElementById('batchGameFinished')?.value,
+      price_paid_currency:  document.getElementById('batchGamePaidCurrency')?.value || null,
+      price_value_currency: document.getElementById('batchGameValueCurrency')?.value || null,
     };
     // Remove nulls — only send fields that were actually set
     Object.keys(data).forEach(k => { if (data[k] === null || data[k] === '') delete data[k]; });

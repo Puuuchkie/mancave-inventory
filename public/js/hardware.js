@@ -179,18 +179,32 @@ const HardwarePage = (() => {
   function batchEdit() {
     if (!selectedIds.size) return;
     ['batchHwPlatform','batchHwWhere','batchHwDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    ['batchHwType','batchHwCondition','batchHwWorking'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['batchHwType','batchHwCondition','batchHwWorking','batchHwPaidCurrency','batchHwValueCurrency'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    populateBatchCurrencySelects();
     openModal('hwBatchModal');
+  }
+
+  function populateBatchCurrencySelects() {
+    ['batchHwPaidCurrency','batchHwValueCurrency'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const keep = '<option value="">— Keep existing —</option>';
+      Currency.populateSelect(el);
+      el.insertAdjacentHTML('afterbegin', keep);
+      el.value = '';
+    });
   }
 
   async function saveBatchEdit() {
     const data = {
-      platform:          document.getElementById('batchHwPlatform')?.value.trim() || null,
-      type:              document.getElementById('batchHwType')?.value || null,
-      condition:         document.getElementById('batchHwCondition')?.value || null,
-      working_condition: document.getElementById('batchHwWorking')?.value || null,
-      where_purchased:   document.getElementById('batchHwWhere')?.value.trim() || null,
-      date_acquired:     document.getElementById('batchHwDate')?.value || null,
+      platform:             document.getElementById('batchHwPlatform')?.value.trim() || null,
+      type:                 document.getElementById('batchHwType')?.value || null,
+      condition:            document.getElementById('batchHwCondition')?.value || null,
+      working_condition:    document.getElementById('batchHwWorking')?.value || null,
+      where_purchased:      document.getElementById('batchHwWhere')?.value.trim() || null,
+      date_acquired:        document.getElementById('batchHwDate')?.value || null,
+      price_paid_currency:  document.getElementById('batchHwPaidCurrency')?.value || null,
+      price_value_currency: document.getElementById('batchHwValueCurrency')?.value || null,
     };
     Object.keys(data).forEach(k => { if (!data[k]) delete data[k]; });
     if (!Object.keys(data).length) { toast('No fields filled in', 'error'); return; }
