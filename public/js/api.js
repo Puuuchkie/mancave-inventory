@@ -62,8 +62,10 @@ const API = {
   // Import / Export
   exportGames:    (format) => '/api/io/export/games?format=' + format,
   exportHardware: (format) => '/api/io/export/hardware?format=' + format,
-  importGames:    (file)     => API.request('POST', '/api/io/import/games',    { file }),
-  importHardware: (file)     => API.request('POST', '/api/io/import/hardware', { file }),
+  previewGames:   (file)           => API.request('POST', '/api/io/preview/games',    { file }),
+  previewHardware:(file)           => API.request('POST', '/api/io/preview/hardware', { file }),
+  importGames:    (file, mappings) => API.request('POST', '/api/io/import/games',    { file, mappings }),
+  importHardware: (file, mappings) => API.request('POST', '/api/io/import/hardware', { file, mappings }),
 
   // Logs
   getLogs:   () => API.request('GET', '/api/logs'),

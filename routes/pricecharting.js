@@ -6,10 +6,30 @@ const logger = require('../logger');
 
 const PC_BASE = 'https://www.pricecharting.com';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-// Search endpoint returns JSON by default — don't set Accept:text/html or it switches to HTML
-const SEARCH_HEADERS = { 'User-Agent': UA, 'Referer': 'https://www.pricecharting.com/' };
+// Search endpoint returns JSON — include AJAX headers so the server treats it as a browser XHR
+const SEARCH_HEADERS = {
+  'User-Agent': UA,
+  'Accept': 'application/json, text/javascript, */*; q=0.01',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'X-Requested-With': 'XMLHttpRequest',
+  'Referer': 'https://www.pricecharting.com/',
+};
 // Game page needs browser-like headers to return full HTML
 const PAGE_HEADERS  = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.5', 'Referer': 'https://www.pricecharting.com/' };
+
+// Strip regional prefix and normalise capitalisation so PC search gets a clean platform name.
+// e.g. "PAL Playstation 1" → "PlayStation"  /  "Japan Nintendo 64" → "Nintendo 64"
+function normalizeForPcSearch(platform) {
+  if (!platform) return '';
+  let p = platform.trim();
+  // Remove leading regional prefix
+  p = p.replace(/^(PAL|Japan|NTSC-J|NTSC-U\/C|NTSC)\s+/i, '');
+  // Fix capitalisation: "Playstation" → "PlayStation"
+  p = p.replace(/\bPlaystation\b/gi, 'PlayStation');
+  // PriceCharting uses "PlayStation" (not "PlayStation 1")
+  p = p.replace(/^PlayStation\s*1$/i, 'PlayStation');
+  return p;
+}
 
 function slugify(str) {
   return String(str).toLowerCase()
@@ -24,7 +44,7 @@ function priceIdForCondition(condition) {
   const c = condition.toLowerCase();
   if (c.includes('sealed')) return 'new_price';
   if (c.includes('graded')) return 'graded_price';
-  if (c.includes('cib') || (c.includes('complete') && !c.includes('no manual'))) return 'complete_price';
+  if (c.includes('cib') || c.includes('complete in box') || (c.includes('complete') && !c.includes('no manual'))) return 'complete_price';
   if (c.includes('box only')) return 'box_only_price';
   if (c.includes('manual only')) return 'manual_only_price';
   return 'used_price';
@@ -38,23 +58,26 @@ function extractPrice(html, priceId) {
 }
 
 async function fetchPriceFromPC(title, platform, condition) {
+  // Normalise platform before sending to PC (strips PAL/Japan prefix, fixes capitalisation)
+  const pcPlatform = normalizeForPcSearch(platform);
+
   // 1. Search for the game (returns JSON without auth)
-  const q = encodeURIComponent([title, platform].filter(Boolean).join(' '));
+  const q = encodeURIComponent([title, pcPlatform].filter(Boolean).join(' '));
   const searchResp = await axios.get(`${PC_BASE}/search-products?q=${q}&type=videogames`, {
     headers: SEARCH_HEADERS, responseType: 'text', timeout: 10000,
   });
 
   const data = JSON.parse(searchResp.data);
   if (!data.products?.length) {
-    logger.warn('pricecharting', `No results for "${title}" on "${platform}"`);
+    logger.warn('pricecharting', `No results for "${title}" on "${pcPlatform}"`);
     throw new Error('Game not found on PriceCharting');
   }
-  logger.info('pricecharting', `Searching: "${title}" / "${platform}" (${data.products.length} results)`);
+  logger.info('pricecharting', `Searching: "${title}" / "${pcPlatform}" (${data.products.length} results)`);
 
   // Pick best-matching product by title + console similarity
   const normalize = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const nt = normalize(title);
-  const np = normalize(platform);
+  const np = normalize(pcPlatform);
 
   function scoreProduct(p) {
     // Title score (0–100)

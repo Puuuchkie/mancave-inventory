@@ -22,6 +22,72 @@ const HW_COLS = [
   'date_acquired', 'where_purchased', 'remarks',
 ];
 
+// ── Known-value lists (used by preview / wizard) ─────────────────────────────
+
+const KNOWN_PLATFORMS = [
+  'NES', 'Famicom', 'SNES', 'Super Famicom', 'Nintendo 64', 'GameCube',
+  'Wii', 'Wii U', 'Nintendo Switch',
+  'Game Boy', 'Game Boy Color', 'Game Boy Advance',
+  'Nintendo DS', 'Nintendo 3DS',
+  'PlayStation', 'PlayStation 2', 'PlayStation 3', 'PlayStation 4', 'PlayStation 5',
+  'PSP', 'PS Vita',
+  'Sega Master System', 'Sega Genesis / Mega Drive', 'Mega Drive',
+  'Sega Saturn', 'Sega Dreamcast', 'Dreamcast', 'Game Gear',
+  'Xbox', 'Xbox 360', 'Xbox One', 'Xbox Series X/S',
+  'Atari 2600', 'Neo Geo', 'PC', 'Multi-Platform',
+];
+
+const KNOWN_GAME_CONDITIONS = [
+  'Sealed', 'Complete (CIB)', 'Manual Missing', 'Front Cover Missing',
+  'Loose', 'Box Only', 'Manual Only', 'Graded', 'Poor / Damaged',
+];
+
+const KNOWN_HW_CONDITIONS = [
+  'Factory Sealed', 'Working', 'Partially Working',
+  'Refurbished', 'Poor', 'For Parts / Repair',
+];
+
+const KNOWN_INTEGRITY = ['Complete In Box', 'Loose', 'No Controllers'];
+
+const KNOWN_REGIONS = [
+  'NTSC (USA)', 'PAL (Europe)', 'PAL-AU (Australia)', 'NTSC-J (Japan)', 'Multi-Region',
+];
+
+const REGIONAL_PREFIX_RE = /^(pal|japan|ntsc-j|ntsc-u\/c|ntsc)\s+/i;
+
+function isKnownPlatform(val) {
+  if (!val) return true;
+  const stripped = String(val).trim().replace(REGIONAL_PREFIX_RE, '').toLowerCase();
+  return KNOWN_PLATFORMS.some(p => p.toLowerCase() === stripped);
+}
+
+function isKnownValue(val, list) {
+  if (!val) return true;
+  const v = String(val).trim().toLowerCase();
+  return list.some(k => k.toLowerCase() === v);
+}
+
+// Collect unique non-null values for a column that fail the test fn
+function unknownsFor(rows, col, testFn) {
+  const seen = new Set();
+  for (const r of rows) {
+    const v = r[col];
+    if (v != null && String(v).trim() !== '' && !testFn(v)) seen.add(String(v).trim());
+  }
+  return [...seen].sort();
+}
+
+// Apply user-supplied value mappings to a parsed row
+function applyMappings(row, mappings) {
+  if (!mappings || !Object.keys(mappings).length) return row;
+  const out = { ...row };
+  for (const [col, map] of Object.entries(mappings)) {
+    const cur = out[col] != null ? String(out[col]).trim() : null;
+    if (cur && map[cur]) out[col] = map[cur];
+  }
+  return out;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function toBool(v) {
@@ -131,6 +197,54 @@ function sheetToRows(wb) {
   return normalized;
 }
 
+// ── PREVIEW (returns unknown values for wizard, does not insert) ──────────────
+
+router.post('/preview/games', (req, res) => {
+  const { file } = req.body;
+  if (!file) return res.status(400).json({ error: 'No file provided' });
+  let rows;
+  try { rows = sheetToRows(parseWorkbook(file)); }
+  catch (e) { return res.status(400).json({ error: 'Could not parse file: ' + e.message }); }
+
+  const unknowns = {};
+  const p = unknownsFor(rows, 'platform',  isKnownPlatform);
+  const c = unknownsFor(rows, 'condition', v => isKnownValue(v, KNOWN_GAME_CONDITIONS));
+  const r = unknownsFor(rows, 'region',    v => isKnownValue(v, KNOWN_REGIONS));
+  if (p.length) unknowns.platform  = p;
+  if (c.length) unknowns.condition = c;
+  if (r.length) unknowns.region    = r;
+
+  res.json({
+    rows: rows.length,
+    unknowns,
+    known: { platform: KNOWN_PLATFORMS, condition: KNOWN_GAME_CONDITIONS, region: KNOWN_REGIONS },
+  });
+});
+
+router.post('/preview/hardware', (req, res) => {
+  const { file } = req.body;
+  if (!file) return res.status(400).json({ error: 'No file provided' });
+  let rows;
+  try { rows = sheetToRows(parseWorkbook(file)); }
+  catch (e) { return res.status(400).json({ error: 'Could not parse file: ' + e.message }); }
+
+  const unknowns = {};
+  const p = unknownsFor(rows, 'platform',  isKnownPlatform);
+  const c = unknownsFor(rows, 'condition', v => isKnownValue(v, KNOWN_HW_CONDITIONS));
+  const g = unknownsFor(rows, 'integrity', v => isKnownValue(v, KNOWN_INTEGRITY));
+  const r = unknownsFor(rows, 'region',    v => isKnownValue(v, KNOWN_REGIONS));
+  if (p.length) unknowns.platform  = p;
+  if (c.length) unknowns.condition = c;
+  if (g.length) unknowns.integrity = g;
+  if (r.length) unknowns.region    = r;
+
+  res.json({
+    rows: rows.length,
+    unknowns,
+    known: { platform: KNOWN_PLATFORMS, condition: KNOWN_HW_CONDITIONS, integrity: KNOWN_INTEGRITY, region: KNOWN_REGIONS },
+  });
+});
+
 // ── EXPORT ────────────────────────────────────────────────────────────────────
 
 router.get('/export/games', (req, res) => {
@@ -189,7 +303,7 @@ router.get('/export/hardware', (req, res) => {
 // ── IMPORT ────────────────────────────────────────────────────────────────────
 
 router.post('/import/games', (req, res) => {
-  const { file } = req.body; // base64 encoded file
+  const { file, mappings = {} } = req.body;
   if (!file) return res.status(400).json({ error: 'No file provided' });
 
   let rows;
@@ -220,7 +334,8 @@ router.post('/import/games', (req, res) => {
 
   let imported = 0, skipped = 0;
   const importMany = db.transaction((rows) => {
-    for (const r of rows) {
+    for (const raw of rows) {
+      const r = applyMappings(raw, mappings);
       const title    = toStr(r.title);
       const platform = toStr(r.platform);
       if (!title || !platform) { skipped++; continue; }
@@ -249,7 +364,7 @@ router.post('/import/games', (req, res) => {
 });
 
 router.post('/import/hardware', (req, res) => {
-  const { file } = req.body;
+  const { file, mappings = {} } = req.body;
   if (!file) return res.status(400).json({ error: 'No file provided' });
 
   let rows;
@@ -282,7 +397,8 @@ router.post('/import/hardware', (req, res) => {
 
   let imported = 0, skipped = 0;
   const importMany = db.transaction((rows) => {
-    for (const r of rows) {
+    for (const raw of rows) {
+      const r = applyMappings(raw, mappings);
       const name     = toStr(r.name);
       const type     = toStr(r.type);
       const platform = toStr(r.platform);

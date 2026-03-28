@@ -280,8 +280,125 @@ const App = (() => {
     document.getElementById('exportHwCsv')?.addEventListener('click',     () => { window.location.href = API.exportHardware('csv'); });
     document.getElementById('exportHwXlsx')?.addEventListener('click',    () => { window.location.href = API.exportHardware('xlsx'); });
 
+    // ── Import wizard ──────────────────────────────────────────────────────────
+
+    // Maps common shorthand/legacy values to known platform names
+    const PLATFORM_ABBREV = {
+      'ps1':'PlayStation','psx':'PlayStation','psone':'PlayStation','playstation 1':'PlayStation',
+      'ps2':'PlayStation 2','ps3':'PlayStation 3','ps4':'PlayStation 4','ps5':'PlayStation 5',
+      'n64':'Nintendo 64','gc':'GameCube','ngc':'GameCube',
+      'gba':'Game Boy Advance','gbc':'Game Boy Color','gb':'Game Boy',
+      'nds':'Nintendo DS','3ds':'Nintendo 3DS',
+      'switch':'Nintendo Switch','sw':'Nintendo Switch',
+      'genesis':'Sega Genesis / Mega Drive','mega drive':'Sega Genesis / Mega Drive',
+      'megadrive':'Sega Genesis / Mega Drive','md':'Sega Genesis / Mega Drive',
+      'dc':'Sega Dreamcast','sms':'Sega Master System','gg':'Game Gear',
+      'x360':'Xbox 360','xbone':'Xbox One','xsx':'Xbox Series X/S',
+      'vita':'PS Vita','psv':'PS Vita',
+    };
+
+    function suggestValue(unknown, knownList) {
+      const u = unknown.toLowerCase().trim();
+      const uClean = u.replace(/[^a-z0-9 ]+/g, '').trim();
+      // Direct abbreviation match
+      if (PLATFORM_ABBREV[u])      return PLATFORM_ABBREV[u];
+      if (PLATFORM_ABBREV[uClean]) return PLATFORM_ABBREV[uClean];
+      // Case-insensitive exact
+      const exact = knownList.find(k => k.toLowerCase() === u);
+      if (exact) return exact;
+      // Substring overlap
+      let best = null, bestScore = 0;
+      for (const k of knownList) {
+        const kl = k.toLowerCase().replace(/[^a-z0-9 ]+/g, '');
+        if (kl.includes(uClean) || uClean.includes(kl)) {
+          const score = Math.min(uClean.length, kl.length) / Math.max(uClean.length, kl.length);
+          if (score > bestScore) { best = k; bestScore = score; }
+        }
+      }
+      return bestScore >= 0.5 ? best : null;
+    }
+
+    // Wizard state
+    let _wizardB64 = null;
+    let _wizardImportFn = null;
+    let _wizardStatusEl = null;
+    let _wizardReloadFn = null;
+
+    function buildWizardBody(preview) {
+      const colLabels = { platform: 'Platform', condition: 'Condition', region: 'Region', integrity: 'Integrity' };
+      const container = document.getElementById('wizardMappings');
+      container.innerHTML = '';
+
+      for (const [col, unknowns] of Object.entries(preview.unknowns)) {
+        const knownList = preview.known[col] || [];
+        const section = document.createElement('div');
+        section.className = 'wizard-section';
+        section.innerHTML = `<div class="wizard-section-title">${esc(colLabels[col] || col)}</div>`;
+
+        for (const unknown of unknowns) {
+          const suggestion = suggestValue(unknown, knownList);
+          const options = [`<option value="">— keep as-is —</option>`]
+            .concat(knownList.map(k =>
+              `<option value="${esc(k)}"${k === suggestion ? ' selected' : ''}>${esc(k)}</option>`
+            )).join('');
+
+          const row = document.createElement('div');
+          row.className = 'wizard-row';
+          row.innerHTML = `
+            <div class="wizard-unknown" title="${esc(unknown)}">${esc(unknown)}</div>
+            <div class="wizard-arrow">→</div>
+            <select class="wizard-select" data-col="${esc(col)}" data-unknown="${esc(unknown)}">${options}</select>`;
+          section.appendChild(row);
+        }
+        container.appendChild(section);
+      }
+    }
+
+    function collectWizardMappings() {
+      const mappings = {};
+      document.querySelectorAll('#wizardMappings .wizard-select').forEach(sel => {
+        if (!sel.value) return;
+        const col = sel.dataset.col;
+        const unknown = sel.dataset.unknown;
+        if (!mappings[col]) mappings[col] = {};
+        mappings[col][unknown] = sel.value;
+      });
+      return mappings;
+    }
+
+    async function runImport(b64, mappings, importFn, statusEl, reloadFn) {
+      statusEl.textContent = 'Importing…';
+      statusEl.style.color = 'var(--text-muted)';
+      try {
+        const r = await importFn(b64, mappings);
+        statusEl.textContent = `✓ ${r.imported} imported${r.skipped ? `, ${r.skipped} skipped` : ''}`;
+        statusEl.style.color = 'var(--green)';
+        reloadFn();
+        App.loadSidebarCounts();
+      } catch (err) {
+        statusEl.textContent = '✕ ' + err.message;
+        statusEl.style.color = 'var(--red)';
+      }
+    }
+
+    // Wire wizard buttons once
+    document.getElementById('wizardCancelBtn').addEventListener('click', () => {
+      document.getElementById('importWizardModal').classList.remove('open');
+      document.body.style.overflow = '';
+    });
+    document.getElementById('wizardCancelBtn2').addEventListener('click', () => {
+      document.getElementById('importWizardModal').classList.remove('open');
+      document.body.style.overflow = '';
+    });
+    document.getElementById('wizardConfirmBtn').addEventListener('click', async () => {
+      document.getElementById('importWizardModal').classList.remove('open');
+      document.body.style.overflow = '';
+      const mappings = collectWizardMappings();
+      await runImport(_wizardB64, mappings, _wizardImportFn, _wizardStatusEl, _wizardReloadFn);
+    });
+
     // Import handlers
-    function setupImport(inputId, statusId, apiFn, reloadFn) {
+    function setupImport(inputId, statusId, previewFn, importFn, reloadFn) {
       document.getElementById(inputId)?.addEventListener('change', async function () {
         const file = this.files[0];
         if (!file) return;
@@ -292,12 +409,27 @@ const App = (() => {
         reader.onload = async (e) => {
           const b64 = e.target.result.split(',')[1];
           try {
-            statusEl.textContent = 'Importing…';
-            const r = await apiFn(b64);
-            statusEl.textContent = `✓ ${r.imported} imported${r.skipped ? `, ${r.skipped} skipped` : ''}`;
-            statusEl.style.color = 'var(--green)';
-            reloadFn();
-            App.loadSidebarCounts();
+            statusEl.textContent = 'Analysing…';
+            const preview = await previewFn(b64);
+            if (!Object.keys(preview.unknowns).length) {
+              // Nothing to map — import directly
+              await runImport(b64, {}, importFn, statusEl, reloadFn);
+            } else {
+              // Show wizard
+              const totalUnknowns = Object.values(preview.unknowns).reduce((s, a) => s + a.length, 0);
+              document.getElementById('wizardSubtitle').textContent =
+                `${preview.rows} row${preview.rows !== 1 ? 's' : ''} ready · `
+                + `${totalUnknowns} unrecognized value${totalUnknowns !== 1 ? 's' : ''} found. `
+                + `Map them below or leave as-is to import unchanged.`;
+              buildWizardBody(preview);
+              document.getElementById('wizardConfirmBtn').textContent = `Import ${preview.rows} row${preview.rows !== 1 ? 's' : ''}`;
+              _wizardB64 = b64;
+              _wizardImportFn = importFn;
+              _wizardStatusEl = statusEl;
+              _wizardReloadFn = reloadFn;
+              document.getElementById('importWizardModal').classList.add('open');
+              document.body.style.overflow = 'hidden';
+            }
           } catch (err) {
             statusEl.textContent = '✕ ' + err.message;
             statusEl.style.color = 'var(--red)';
@@ -307,8 +439,8 @@ const App = (() => {
         reader.readAsDataURL(file);
       });
     }
-    setupImport('importGamesFile', 'importGamesStatus', API.importGames, GamesPage.load);
-    setupImport('importHwFile',    'importHwStatus',    API.importHardware, HardwarePage.load);
+    setupImport('importGamesFile', 'importGamesStatus', API.previewGames,    API.importGames,    GamesPage.load);
+    setupImport('importHwFile',    'importHwStatus',    API.previewHardware, API.importHardware, HardwarePage.load);
 
     initDrawer();
     GamesPage.init();
