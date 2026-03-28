@@ -10,6 +10,7 @@ const HardwarePage = (() => {
   let filterType = '';
   let filterCondition = '';
   let selectedIds = new Set();
+  let lastCheckedIdx = -1;
 
   const TYPES = ['Console', 'Handheld Console', 'Controller / Gamepad', 'Arcade Stick', 'Light Gun', 'Memory Card', 'Peripheral', 'Cable / Adapter', 'Storage', 'Accessory', 'Other'];
   const CONDITIONS = ['Sealed', 'Mint', 'Near Mint', 'Very Good', 'Good', 'Fair', 'Poor / Damaged', 'For Parts / Repair'];
@@ -61,6 +62,7 @@ const HardwarePage = (() => {
             <button class="btn btn-primary" onclick="HardwarePage.openAdd()">+ Add Hardware</button>
           </div>
         </td></tr>`;
+      updateBatchBar();
       return;
     }
 
@@ -71,8 +73,8 @@ const HardwarePage = (() => {
       const icon = TYPE_ICONS[h.type] || '🕹️';
       const added = h.created_at ? h.created_at.slice(0, 7) : '—';
       const sel = selectedIds.has(h.id);
-      return `<tr class="${sel ? 'row-selected' : ''}" onclick="HardwarePage.openDetail(${h.id})">
-        <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${h.id}" ${sel ? 'checked' : ''} onchange="HardwarePage.toggleSelect(${h.id}, this.checked)"></td>
+      return `<tr class="${sel ? 'row-selected' : ''}" onclick="if(!event.target.closest('.row-check,.row-actions'))HardwarePage.openDetail(${h.id})">
+        <td><input type="checkbox" class="row-check" data-id="${h.id}" ${sel ? 'checked' : ''}></td>
         <td class="td-thumb"><div class="row-thumb-placeholder">${icon}</div></td>
         <td>
           <div class="td-title">${esc(h.name)}</div>
@@ -103,6 +105,7 @@ const HardwarePage = (() => {
     });
 
     renderCards();
+    updateBatchBar();
   }
 
   function renderCards() {
@@ -161,6 +164,7 @@ const HardwarePage = (() => {
 
   function clearSelection() {
     selectedIds.clear();
+    lastCheckedIdx = -1;
     renderTable();
   }
 
@@ -475,8 +479,37 @@ const HardwarePage = (() => {
     document.getElementById('hwSelectAll')?.addEventListener('change', function () {
       if (this.checked) allItems.forEach(h => selectedIds.add(h.id));
       else selectedIds.clear();
+      lastCheckedIdx = -1;
       renderTable();
     });
+
+    // Checkbox click delegation (supports shift-select)
+    document.getElementById('hardwareTable')?.addEventListener('click', (e) => {
+      const cb = e.target.closest('input.row-check');
+      if (!cb) return;
+      const id = parseInt(cb.dataset.id);
+      const sorted = sortData(allItems, sortKey, sortDir);
+      const idx = sorted.findIndex(h => h.id === id);
+
+      if (e.shiftKey && lastCheckedIdx !== -1 && idx !== -1) {
+        const from = Math.min(lastCheckedIdx, idx);
+        const to = Math.max(lastCheckedIdx, idx);
+        const shouldCheck = cb.checked;
+        sorted.slice(from, to + 1).forEach(h => {
+          if (shouldCheck) selectedIds.add(h.id);
+          else selectedIds.delete(h.id);
+        });
+        renderTable();
+      } else {
+        if (cb.checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+        if (idx !== -1) lastCheckedIdx = idx;
+        const row = cb.closest('tr');
+        if (row) row.classList.toggle('row-selected', cb.checked);
+        updateBatchBar();
+      }
+    });
+
     document.getElementById('saveHwBatchBtn')?.addEventListener('click', saveBatchEdit);
 
     document.getElementById('hwPcSearchBtn')?.addEventListener('click', searchPrices);

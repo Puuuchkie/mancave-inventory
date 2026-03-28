@@ -10,6 +10,7 @@ const GamesPage = (() => {
   let filterGenre = '';
   let filterFinished = '';
   let selectedIds = new Set();
+  let lastCheckedIdx = -1;
 
   const CONDITIONS = ['Sealed', 'Complete (CIB)', 'Complete (No Manual)', 'Loose', 'Box Only', 'Manual Only', 'Graded', 'Poor / Damaged'];
   const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'NTSC-U/C', 'Multi-Region'];
@@ -120,6 +121,7 @@ const GamesPage = (() => {
             <button class="btn btn-primary" onclick="GamesPage.openAdd()">+ Add Game</button>
           </div>
         </td></tr>`;
+      updateBatchBar();
       return;
     }
 
@@ -130,8 +132,8 @@ const GamesPage = (() => {
         : `<div class="row-thumb-placeholder">🎮</div>`;
       const added = g.created_at ? g.created_at.slice(0, 7) : '—';
       const sel = selectedIds.has(g.id);
-      return `<tr class="${sel ? 'row-selected' : ''}" onclick="GamesPage.openDetail(${g.id})">
-        <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${g.id}" ${sel ? 'checked' : ''} onchange="GamesPage.toggleSelect(${g.id}, this.checked)"></td>
+      return `<tr class="${sel ? 'row-selected' : ''}" onclick="if(!event.target.closest('.row-check,.row-actions'))GamesPage.openDetail(${g.id})">
+        <td><input type="checkbox" class="row-check" data-id="${g.id}" ${sel ? 'checked' : ''}></td>
         <td class="td-thumb">${thumb}</td>
         <td>
           <div class="td-title">${esc(g.title)}</div>
@@ -164,6 +166,7 @@ const GamesPage = (() => {
     });
 
     renderCards();
+    updateBatchBar();
   }
 
   function renderCards() {
@@ -219,6 +222,7 @@ const GamesPage = (() => {
 
   function clearSelection() {
     selectedIds.clear();
+    lastCheckedIdx = -1;
     renderTable();
   }
 
@@ -695,7 +699,35 @@ const GamesPage = (() => {
     document.getElementById('gamesSelectAll')?.addEventListener('change', function () {
       if (this.checked) allGames.forEach(g => selectedIds.add(g.id));
       else selectedIds.clear();
+      lastCheckedIdx = -1;
       renderTable();
+    });
+
+    // Checkbox click delegation (supports shift-select)
+    document.getElementById('gamesTable')?.addEventListener('click', (e) => {
+      const cb = e.target.closest('input.row-check');
+      if (!cb) return;
+      const id = parseInt(cb.dataset.id);
+      const sorted = sortData(allGames, sortKey, sortDir);
+      const idx = sorted.findIndex(g => g.id === id);
+
+      if (e.shiftKey && lastCheckedIdx !== -1 && idx !== -1) {
+        const from = Math.min(lastCheckedIdx, idx);
+        const to = Math.max(lastCheckedIdx, idx);
+        const shouldCheck = cb.checked;
+        sorted.slice(from, to + 1).forEach(g => {
+          if (shouldCheck) selectedIds.add(g.id);
+          else selectedIds.delete(g.id);
+        });
+        renderTable();
+      } else {
+        if (cb.checked) selectedIds.add(id);
+        else selectedIds.delete(id);
+        if (idx !== -1) lastCheckedIdx = idx;
+        const row = cb.closest('tr');
+        if (row) row.classList.toggle('row-selected', cb.checked);
+        updateBatchBar();
+      }
     });
 
     // Batch save
