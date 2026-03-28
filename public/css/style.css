@@ -93,6 +93,38 @@ button { cursor: pointer; }
   padding: 12px 10px;
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.hamburger-btn:hover { background: var(--bg-elevated); }
+.hamburger-btn span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text-primary);
+  border-radius: 2px;
+  transition: var(--transition);
+}
+
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 1000;
 }
 
 .nav-section-label {
@@ -1096,66 +1128,82 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 /* ===== MOBILE (≤ 767px) ===== */
 @media (max-width: 767px) {
 
-  /* Layout: sidebar moves to bottom nav */
+  /* Layout: 2 rows — topbar + content (no bottom nav) */
   .app-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 52px 1fr 60px;
+    grid-template-rows: 56px 1fr;
     height: 100vh;
     height: 100dvh;
   }
 
-  /* Topbar: explicit placement in row 1 */
+  /* Topbar */
   .topbar {
     grid-row: 1;
     grid-column: 1;
+    padding: 0 12px;
+    gap: 8px;
   }
-
-  /* Sidebar → bottom nav bar */
-  .sidebar {
-    grid-row: 3;
-    grid-column: 1;
-    flex-direction: row;
-    height: 60px;
-    border-right: none;
-    border-top: 1px solid var(--border);
-    overflow: hidden;
-  }
-  .sidebar-brand { display: none; }
-  .sidebar-nav {
-    display: flex;
-    flex-direction: row;
-    padding: 0;
-    width: 100%;
-    overflow: hidden;
-  }
-  .nav-section-label { display: none; }
-  .nav-bottom { margin-top: 0; padding-top: 0; border-top: none; display: contents; }
-  .nav-item {
-    flex: 1;
-    flex-direction: column;
-    padding: 6px 2px 4px;
-    font-size: 10px;
-    gap: 2px;
-    justify-content: center;
-    align-items: center;
-    border-radius: 0;
-    text-align: center;
-    margin-bottom: 0;
-    min-width: 0;
-  }
-  .nav-item .nav-icon { font-size: 18px; width: auto; }
-  .nav-item .nav-badge { margin-left: 0; font-size: 10px; padding: 0 5px; }
-
-  /* Topbar */
-  .topbar { padding: 0 12px; gap: 8px; }
   .topbar-subtitle { display: none; }
-  .topbar-title { font-size: 15px; }
+  .topbar-title { font-size: 16px; }
   .search-wrap { max-width: none; flex: 1; }
   .topbar-actions { margin-left: 0; }
 
+  /* Hamburger visible on mobile */
+  .hamburger-btn { display: flex; }
+
   /* Main content */
-  .main-content { grid-row: 2; grid-column: 1; -webkit-overflow-scrolling: touch; }
+  .main-content {
+    grid-row: 2;
+    grid-column: 1;
+    -webkit-overflow-scrolling: touch;
+  }
   .page { padding: 12px; }
+
+  /* Sidebar → slide-in drawer */
+  .sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    width: 260px;
+    height: 100%;
+    z-index: 1001;
+    transition: left 0.25s ease;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    /* reset grid placement */
+    grid-row: unset;
+    grid-column: unset;
+  }
+  .sidebar.drawer-open { left: 0; }
+  .sidebar-brand { display: flex; }
+  .sidebar-nav {
+    flex-direction: column;
+    padding: 12px 10px;
+    width: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .nav-section-label { display: block; }
+  .nav-bottom { display: block; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
+  .nav-item {
+    flex-direction: row;
+    padding: 10px 12px;
+    font-size: 14px;
+    gap: 10px;
+    justify-content: flex-start;
+    align-items: center;
+    border-radius: var(--radius-sm);
+    text-align: left;
+    margin-bottom: 2px;
+    min-width: 0;
+    width: 100%;
+  }
+  .nav-item .nav-icon { font-size: 16px; width: 24px; }
+  .nav-item .nav-badge { margin-left: auto; font-size: 11px; }
+
+  /* Backdrop */
+  .drawer-backdrop.visible { display: block; }
 
   /* Tables: horizontal scroll, hide less important columns */
   .table-wrap { overflow-x: auto; }
@@ -1189,6 +1237,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .modal-footer { padding: 12px 16px; }
 
   /* Filters bar */
+  .filters-bar { gap: 8px; }
   .filters-right { margin-left: 0; width: 100%; justify-content: flex-end; }
   .filter-select { flex: 1; min-width: 0; }
 

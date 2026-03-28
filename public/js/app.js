@@ -216,6 +216,28 @@ const App = (() => {
     finally { if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Rates'; } }
   }
 
+  function initDrawer() {
+    const btn = document.getElementById('hamburgerBtn');
+    const backdrop = document.getElementById('drawerBackdrop');
+    const sidebar = document.querySelector('.sidebar');
+    if (!btn) return;
+
+    function openDrawer() {
+      sidebar.classList.add('drawer-open');
+      backdrop.classList.add('visible');
+    }
+    function closeDrawer() {
+      sidebar.classList.remove('drawer-open');
+      backdrop.classList.remove('visible');
+    }
+
+    btn.addEventListener('click', openDrawer);
+    backdrop.addEventListener('click', closeDrawer);
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', closeDrawer);
+    });
+  }
+
   function init() {
     document.querySelectorAll('.nav-item[data-page]').forEach(el => {
       el.addEventListener('click', () => navigate(el.dataset.page));
@@ -241,6 +263,7 @@ const App = (() => {
       });
     });
 
+    initDrawer();
     GamesPage.init();
     HardwarePage.init();
     LogsPage.init();
