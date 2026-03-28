@@ -1223,14 +1223,22 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   /* Hamburger visible on mobile */
   .hamburger-btn { display: flex; }
 
-  /* Main content: fills remaining space and scrolls */
+  /* Main content: fills remaining space, clips overflow — page does the scrolling */
   .main-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Active page: fills main-content and scrolls its own content */
+  .page { padding: 12px; }
+  .page.active {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .page { padding: 12px; }
 
   /* Sidebar → slide-in drawer, fully out of flex flow */
   .sidebar {
@@ -1325,9 +1333,6 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .settings-card [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
-
-  /* Let the table-wrap grow and let main-content scroll it */
-  .table-wrap { overflow: visible; border-radius: var(--radius); }
 
   /* Compact table rows so more fit on screen */
   #gamesTable td, #gamesTable th,
