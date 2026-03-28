@@ -1352,14 +1352,8 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   /* Bottom padding so FAB doesn't cover last card */
   .page.active { padding-bottom: 90px; }
 
-  /* Hardware table: still needs horizontal scroll */
-  #page-hardware .table-wrap { overflow-x: auto; display: block; }
-  #hardwareTable th:nth-child(3), #hardwareTable td:nth-child(3),
-  #hardwareTable th:nth-child(4), #hardwareTable td:nth-child(4),
-  #hardwareTable th:nth-child(6), #hardwareTable td:nth-child(6),
-  #hardwareTable th:nth-child(7), #hardwareTable td:nth-child(7),
-  #hardwareTable th:nth-child(8), #hardwareTable td:nth-child(8),
-  #hardwareTable th:nth-child(9), #hardwareTable td:nth-child(9) { display: none; }
+  /* Hardware: hide table, show card list — same as games */
+  #hardwareTable, #page-hardware .table-wrap { display: none; }
 
   /* Modals: full-width bottom sheet */
   .modal-overlay { padding: 0; align-items: flex-end; }
@@ -1390,9 +1384,6 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .settings-card [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
-
-  /* Compact hardware table rows */
-  #hardwareTable td, #hardwareTable th { padding: 6px 8px; font-size: 13px; }
 
   /* Filters bar: single scrollable row, no wrapping */
   .filters-bar {

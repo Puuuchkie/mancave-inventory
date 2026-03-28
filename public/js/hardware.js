@@ -96,6 +96,41 @@ const HardwarePage = (() => {
       const icon = th.querySelector('.sort-icon');
       if (icon) icon.textContent = th.dataset.sort === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
     });
+
+    renderCards();
+  }
+
+  function renderCards() {
+    const list = document.getElementById('hwMobileList');
+    if (!list) return;
+    const sorted = sortData(allItems, sortKey, sortDir);
+    const TYPE_ICONS = { 'Console': '🖥️', 'Handheld Console': '📟', 'Controller / Gamepad': '🎮', 'Arcade Stick': '🕹️', 'Light Gun': '🔫', 'Memory Card': '💾', 'Peripheral': '🔌', 'Cable / Adapter': '🔌', 'Storage': '💾', 'Accessory': '🔧' };
+    if (!sorted.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕹️</div><p>No hardware found. Tap + to add your first item!</p></div>`;
+      return;
+    }
+    list.innerHTML = sorted.map(h => {
+      const icon = TYPE_ICONS[h.type] || '🕹️';
+      const priceHtml = (h.price_paid != null || h.price_value != null)
+        ? `<div class="game-card-price">
+            ${h.price_paid  != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid,  h.price_paid_currency)}</span>` : ''}
+            ${h.price_value != null ? `<span class="price-value">${Currency.formatWithBase(h.price_value, h.price_value_currency)}</span>` : ''}
+           </div>`
+        : '';
+      const sub = [h.manufacturer, h.color_variant].filter(Boolean).join(' · ');
+      return `<div class="game-card" onclick="HardwarePage.openDetail(${h.id})">
+        <div class="game-card-cover">
+          <div class="game-card-img-placeholder" style="font-size:26px">${icon}</div>
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-title">${esc(h.name)}</div>
+          <div class="game-card-meta">${typeBadge(h.type)}${h.platform ? ' ' + platformBadge(h.platform) : ''}</div>
+          ${sub ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(sub)}</div>` : ''}
+          ${priceHtml}
+        </div>
+        ${conditionBadge(h.condition)}
+      </div>`;
+    }).join('');
   }
 
   function setSort(key) {

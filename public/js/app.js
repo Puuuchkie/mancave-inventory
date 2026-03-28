@@ -2,10 +2,15 @@
 const App = (() => {
   let currentPage = 'dashboard';
 
-  function navigate(page) {
+  function navigate(page, { replace = false } = {}) {
     currentPage = page;
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+    // Update URL
+    const url = '/' + (page === 'dashboard' ? '' : page);
+    if (replace) history.replaceState({ page }, '', url);
+    else history.pushState({ page }, '', url);
 
     const pageEl = document.getElementById(`page-${page}`);
     const navEl = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -34,6 +39,8 @@ const App = (() => {
     if (page === 'games')    addBtn.textContent = '+ Add Game';
     if (page === 'hardware') addBtn.textContent = '+ Add Hardware';
     if (fab) fab.style.display = page === 'games' ? '' : 'none';
+    const hwFab = document.getElementById('hwFab');
+    if (hwFab) hwFab.style.display = page === 'hardware' ? '' : 'none';
 
     // Sync search input between topbar and page search
     if (page === 'games') {
@@ -250,6 +257,7 @@ const App = (() => {
       else if (currentPage === 'hardware') HardwarePage.openAdd();
     });
     document.getElementById('gameFab')?.addEventListener('click', () => GamesPage.openAdd());
+    document.getElementById('hwFab')?.addEventListener('click', () => HardwarePage.openAdd());
 
     // Settings buttons
     document.getElementById('saveIgdbBtn')?.addEventListener('click', saveIgdbCredentials);
@@ -271,9 +279,18 @@ const App = (() => {
     HardwarePage.init();
     LogsPage.init();
 
-    // Navigate immediately — don't block on async data loading
+    // Handle browser back/forward
+    window.addEventListener('popstate', e => {
+      navigate(e.state?.page || 'dashboard', { replace: true });
+    });
+
+    // Determine initial page from URL
+    const pathPage = window.location.pathname.replace(/^\//, '') || 'dashboard';
+    const validPages = ['dashboard', 'games', 'hardware', 'settings', 'logs'];
+    const initialPage = validPages.includes(pathPage) ? pathPage : 'dashboard';
+
     Platforms.load();
-    navigate('dashboard');
+    navigate(initialPage, { replace: true });
 
     // Load currency in background; refresh dashboard totals when ready
     Currency.load().then(() => {
