@@ -141,7 +141,7 @@ const GamesPage = (() => {
         </td>
         <td>${platformBadge(g.platform)}</td>
         <td>${conditionBadge(g.condition)}</td>
-        <td>${esc(g.edition) || '—'}</td>
+        <td>${editionBadge(g.edition)}</td>
         <td>${regionBadge(g.region)}</td>
         <td>${g.quantity || 1}</td>
         <td>${g.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(g.price_paid, g.price_paid_currency)}</span>` : '—'}</td>
@@ -343,7 +343,7 @@ const GamesPage = (() => {
             <div class="detail-field"><span class="detail-field-label">Genre</span><span class="detail-field-value">${esc(g.genre) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Release Year</span><span class="detail-field-value">${g.release_year || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Catalog Number</span><span class="detail-field-value">${esc(g.catalog_number) || '—'}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Edition</span><span class="detail-field-value">${esc(g.edition) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Edition</span><span class="detail-field-value">${editionBadge(g.edition)}</span></div>
           </div>
         </div>
         <div class="form-section">

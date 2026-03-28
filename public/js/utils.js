@@ -24,22 +24,102 @@ function checkmark(v) {
 function conditionBadge(c) {
   if (!c) return '—';
   const cl = c.toLowerCase();
-  let cls = 'badge-condition';
-  if (cl.includes('sealed') || cl.includes('new')) cls = 'badge-sealed';
-  else if (cl.includes('complete') || cl.includes('cib')) cls = 'badge-complete';
-  else if (cl.includes('loose') || cl.includes('cart') || cl.includes('disc')) cls = 'badge-loose';
-  else if (cl.includes('poor') || cl.includes('damaged') || cl.includes('parts')) cls = 'badge-poor';
+  let cls;
+  if (cl === 'sealed' || cl === 'factory sealed') cls = 'badge-sealed';
+  else if (cl.includes('cib') || cl.includes('complete in box') || cl === 'working') cls = 'badge-complete';
+  else if (cl.includes('manual missing') || cl.includes('front cover') || cl.includes('partial')) cls = 'badge-warning';
+  else if (cl.includes('loose')) cls = 'badge-loose';
+  else if (cl.includes('refurb')) cls = 'badge-refurbished';
+  else if (cl.includes('graded')) cls = 'badge-graded';
+  else if (cl.includes('poor') || cl.includes('damaged') || cl.includes('parts') || cl.includes('repair')) cls = 'badge-poor';
+  else if (cl.includes('box only') || cl.includes('manual only')) cls = 'badge-warning';
+  else cls = 'badge-condition';
   return `<span class="badge ${cls}">${esc(c)}</span>`;
 }
 
+// Per-platform colour map. Regional prefixes (PAL, Japan, NTSC) are stripped
+// before lookup so variants share the same colour as the base platform.
+const PLATFORM_COLORS = {
+  // PlayStation
+  'playstation':       { bg: 'rgba(148,163,184,0.18)', color: '#94a3b8' },
+  'playstation 2':     { bg: 'rgba(37,99,235,0.18)',   color: '#60a5fa' },
+  'playstation 3':     { bg: 'rgba(62,207,142,0.18)',  color: '#3ecf8e' },
+  'playstation 4':     { bg: 'rgba(79,110,247,0.18)',  color: '#818cf8' },
+  'playstation 5':     { bg: 'rgba(226,232,240,0.12)', color: '#e2e8f0' },
+  'psp':               { bg: 'rgba(79,110,247,0.18)',  color: '#818cf8' },
+  'ps vita':           { bg: 'rgba(99,102,241,0.18)',  color: '#a5b4fc' },
+  // Nintendo home
+  'nes':               { bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+  'famicom':           { bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+  'snes':              { bg: 'rgba(139,92,246,0.18)',  color: '#c4b5fd' },
+  'super famicom':     { bg: 'rgba(139,92,246,0.18)',  color: '#c4b5fd' },
+  'nintendo 64':       { bg: 'rgba(16,185,129,0.18)',  color: '#6ee7b7' },
+  'gamecube':          { bg: 'rgba(124,58,237,0.18)',  color: '#a78bfa' },
+  'wii':               { bg: 'rgba(148,163,184,0.18)', color: '#cbd5e1' },
+  'wii u':             { bg: 'rgba(37,99,235,0.18)',   color: '#93c5fd' },
+  'nintendo switch':   { bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+  // Nintendo handheld
+  'game boy':          { bg: 'rgba(51,65,85,0.35)',    color: '#94a3b8' },
+  'game boy color':    { bg: 'rgba(234,179,8,0.18)',   color: '#fbbf24' },
+  'game boy advance':  { bg: 'rgba(99,102,241,0.18)',  color: '#a5b4fc' },
+  'nintendo ds':       { bg: 'rgba(59,130,246,0.18)',  color: '#93c5fd' },
+  'nintendo 3ds':      { bg: 'rgba(220,38,38,0.18)',   color: '#fca5a5' },
+  // Sega
+  'sega master system':{ bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
+  'sega genesis':      { bg: 'rgba(30,58,138,0.3)',    color: '#93c5fd' },
+  'sega mega drive':   { bg: 'rgba(30,58,138,0.3)',    color: '#93c5fd' },
+  'mega drive':        { bg: 'rgba(30,58,138,0.3)',    color: '#93c5fd' },
+  'sega saturn':       { bg: 'rgba(148,163,184,0.18)', color: '#94a3b8' },
+  'sega dreamcast':    { bg: 'rgba(249,115,22,0.18)',  color: '#fb923c' },
+  'dreamcast':         { bg: 'rgba(249,115,22,0.18)',  color: '#fb923c' },
+  'game gear':         { bg: 'rgba(51,65,85,0.35)',    color: '#94a3b8' },
+  // Xbox
+  'xbox':              { bg: 'rgba(21,128,61,0.22)',   color: '#4ade80' },
+  'xbox 360':          { bg: 'rgba(21,128,61,0.22)',   color: '#86efac' },
+  'xbox one':          { bg: 'rgba(15,118,110,0.22)',  color: '#34d399' },
+  'xbox series x/s':   { bg: 'rgba(15,118,110,0.22)', color: '#34d399' },
+  // Other
+  'atari 2600':        { bg: 'rgba(180,120,50,0.22)',  color: '#fbbf24' },
+  'neo geo':           { bg: 'rgba(220,38,38,0.22)',   color: '#fca5a5' },
+  'pc':                { bg: 'rgba(79,110,247,0.18)',  color: '#818cf8' },
+  'multi-platform':    { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' },
+};
+
 function platformBadge(p) {
   if (!p) return '—';
+  // Strip regional prefix to find base platform colour
+  const base = p.toLowerCase().replace(/^(pal|japan|ntsc|ntsc-j|ntsc-u\/c)\s+/i, '');
+  const c = PLATFORM_COLORS[p.toLowerCase()] || PLATFORM_COLORS[base];
+  if (c) return `<span class="badge" style="background:${c.bg};color:${c.color}">${esc(p)}</span>`;
   return `<span class="badge badge-platform">${esc(p)}</span>`;
 }
 
 function regionBadge(r) {
   if (!r) return '—';
-  return `<span class="badge badge-region">${esc(r)}</span>`;
+  const rl = r.toLowerCase();
+  let cls;
+  if (rl.includes('usa') || rl.includes('ntsc-u') || rl === 'ntsc') cls = 'badge-region-usa';
+  else if (rl.includes('japan') || rl.includes('ntsc-j'))            cls = 'badge-region-japan';
+  else if (rl.includes('pal-au') || rl.includes('australia'))        cls = 'badge-region-au';
+  else if (rl.includes('pal') || rl.includes('europe'))              cls = 'badge-region-pal';
+  else if (rl.includes('multi') || rl.includes('universal'))         cls = 'badge-region-multi';
+  else cls = 'badge-region';
+  return `<span class="badge ${cls}">${esc(r)}</span>`;
+}
+
+function editionBadge(e) {
+  if (!e) return '—';
+  const el = e.toLowerCase();
+  let cls;
+  if (el.includes('standard') || el === 'base' || el === 'regular') cls = 'badge-edition-std';
+  else if (el.includes('limit') || el.includes('special') || el.includes('exclusive')) cls = 'badge-edition-limited';
+  else if (el.includes('collector') || el.includes('ultimate') || el.includes('premium')) cls = 'badge-edition-collector';
+  else if (el.includes('steelbook')) cls = 'badge-edition-steel';
+  else if (el.includes('deluxe')) cls = 'badge-edition-deluxe';
+  else if (el.includes('day one') || el.includes('day 1') || el.includes('launch')) cls = 'badge-edition-day1';
+  else if (el.includes('goty') || el.includes('game of the year') || el.includes('complete')) cls = 'badge-edition-goty';
+  else cls = 'badge-edition-std';
+  return `<span class="badge ${cls}">${esc(e)}</span>`;
 }
 
 function typeBadge(t) {
