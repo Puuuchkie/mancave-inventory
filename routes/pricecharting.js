@@ -7,9 +7,9 @@ const logger = require('../logger');
 const PC_BASE = 'https://www.pricecharting.com';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 // Search endpoint returns JSON by default — don't set Accept:text/html or it switches to HTML
-const SEARCH_HEADERS = { 'User-Agent': UA };
+const SEARCH_HEADERS = { 'User-Agent': UA, 'Referer': 'https://www.pricecharting.com/' };
 // Game page needs browser-like headers to return full HTML
-const PAGE_HEADERS  = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.5' };
+const PAGE_HEADERS  = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.5', 'Referer': 'https://www.pricecharting.com/' };
 
 function slugify(str) {
   return String(str).toLowerCase()

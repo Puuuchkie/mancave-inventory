@@ -30,7 +30,10 @@ function toBool(v) {
 }
 
 function toNum(v) {
-  const n = parseFloat(v);
+  if (v === null || v === undefined || v === '') return null;
+  // Strip currency symbols, spaces, and thousands separators before parsing
+  const cleaned = String(v).replace(/[^0-9.\-]/g, '');
+  const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
 
@@ -50,9 +53,38 @@ function parseWorkbook(b64) {
   return XLSX.read(buf, { type: 'buffer', cellDates: true });
 }
 
+// Common aliases: maps user-friendly column names to our internal field names
+const ALIASES = {
+  'price': 'price_paid', 'paid': 'price_paid', 'cost': 'price_paid',
+  'value': 'price_value', 'market_value': 'price_value', 'market value': 'price_value',
+  'print': 'edition', 'version': 'edition', 'variant': 'edition',
+  'console': 'platform', 'system': 'platform',
+  'name': 'title',  // games only — hardware uses 'name' natively
+  'qty': 'quantity', 'count': 'quantity',
+  'year': 'release_year', 'release year': 'release_year',
+  'catalog': 'catalog_number', 'cat': 'catalog_number', 'serial': 'catalog_number',
+  'dev': 'developer', 'pub': 'publisher',
+  'bought': 'date_acquired', 'date': 'date_acquired', 'acquired': 'date_acquired',
+  'shop': 'where_purchased', 'store': 'where_purchased', 'source': 'where_purchased',
+  'notes': 'remarks', 'note': 'remarks', 'comment': 'remarks', 'comments': 'remarks',
+  'complete': 'finished', 'played': 'finished', 'beat': 'finished',
+  'rating': 'personal_rating', 'score': 'personal_rating',
+};
+
+function normalizeKey(k) {
+  const s = String(k).toLowerCase().trim().replace(/[\s\-\/]+/g, '_');
+  return ALIASES[s] || ALIASES[s.replace(/_/g, ' ')] || s;
+}
+
 function sheetToRows(wb) {
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: null, raw: false });
+  const raw = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: false });
+  // Normalize headers on every row
+  return raw.map(row => {
+    const out = {};
+    for (const [k, v] of Object.entries(row)) out[normalizeKey(k)] = v;
+    return out;
+  });
 }
 
 // ── EXPORT ────────────────────────────────────────────────────────────────────
