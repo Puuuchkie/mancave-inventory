@@ -1,0 +1,12 @@
+services:
+  mancave:
+    build: .
+    container_name: mancave-inventory
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/config        # database lives here
+    environment:
+      - PORT=3000
+      - DB_PATH=/config/inventory.db
+    restart: unless-stopped

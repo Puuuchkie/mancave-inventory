@@ -1,0 +1,22 @@
+node_modules/
+
+# Database files — persisted via Docker volume, not committed
+*.db
+*.db-wal
+*.db-shm
+
+# OpenVGDB — 42MB, not needed (IGDB is used instead)
+openvgdb.sqlite
+
+# Environment
+.env
+
+# Claude Code project settings
+.claude/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+nohup.out

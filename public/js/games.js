@@ -1,0 +1,566 @@
+// Games module
+const GamesPage = (() => {
+  let allGames = [];
+  let sortKey = 'title';
+  let sortDir = 'asc';
+  let editingId = null;
+  let searchTerm = '';
+  let filterPlatform = '';
+  let filterCondition = '';
+  let filterGenre = '';
+  let filterFinished = '';
+
+  const CONDITIONS = ['Sealed', 'Complete (CIB)', 'Complete (No Manual)', 'Loose', 'Box Only', 'Manual Only', 'Graded', 'Poor / Damaged'];
+  const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'NTSC-U/C', 'Multi-Region'];
+  const GENRES = ['Action', 'Action-Adventure', 'Adventure', 'Beat \'em Up', 'Fighting', 'Horror', 'JRPG', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Shoot \'em Up', 'Shooter (FPS)', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Visual Novel', 'Other'];
+
+  async function load() {
+    const tbody = document.getElementById('gamesTableBody');
+    tbody.innerHTML = `<tr><td colspan="10" class="loading"><div class="spinner"></div> Loading...</td></tr>`;
+    try {
+      const params = {};
+      if (searchTerm) params.search = searchTerm;
+      if (filterPlatform) params.platform = filterPlatform;
+      if (filterCondition) params.condition = filterCondition;
+      if (filterGenre) params.genre = filterGenre;
+      if (filterFinished !== '') params.finished = filterFinished;
+
+      allGames = await API.getGames(params);
+      renderTable();
+      updateFilterOptions();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+
+  async function updateFilterOptions() {
+    try {
+      const opts = await API.getGameOptions();
+      const platSel = document.getElementById('filterGamePlatform');
+      const conSel = document.getElementById('filterGameCondition');
+      const genSel = document.getElementById('filterGameGenre');
+
+      const currentPlat = platSel.value;
+      const currentCon = conSel.value;
+      const currentGen = genSel.value;
+
+      platSel.innerHTML = '<option value="">All Platforms</option>' + opts.platforms.map(p => `<option value="${esc(p)}" ${p===currentPlat?'selected':''}>${esc(p)}</option>`).join('');
+      conSel.innerHTML = '<option value="">All Conditions</option>' + opts.conditions.map(c => `<option value="${esc(c)}" ${c===currentCon?'selected':''}>${esc(c)}</option>`).join('');
+      genSel.innerHTML = '<option value="">All Genres</option>' + opts.genres.map(g => `<option value="${esc(g)}" ${g===currentGen?'selected':''}>${esc(g)}</option>`).join('');
+    } catch {}
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('gamesTableBody');
+    const sorted = sortData(allGames, sortKey, sortDir);
+    document.getElementById('gamesCount').textContent = `${sorted.length} title${sorted.length !== 1 ? 's' : ''}`;
+
+    if (!sorted.length) {
+      tbody.innerHTML = `
+        <tr><td colspan="11">
+          <div class="empty-state">
+            <div class="empty-icon">🎮</div>
+            <p>No games found. Add your first game to get started!</p>
+            <button class="btn btn-primary" onclick="GamesPage.openAdd()">+ Add Game</button>
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = sorted.map(g => {
+      const diff = priceDiff(g.price_paid, g.price_value, g.price_paid_currency, g.price_value_currency);
+      const thumb = g.cover_url
+        ? `<img src="${esc(g.cover_url)}" alt="" class="row-thumb" loading="lazy">`
+        : `<div class="row-thumb-placeholder">🎮</div>`;
+      return `<tr onclick="GamesPage.openDetail(${g.id})">
+        <td class="td-thumb">${thumb}</td>
+        <td>
+          <div class="td-title">${esc(g.title)}</div>
+          <div class="td-sub">${esc(g.developer || '')}${g.release_year ? ' · ' + g.release_year : ''}</div>
+        </td>
+        <td>${platformBadge(g.platform)}</td>
+        <td>${conditionBadge(g.condition)}</td>
+        <td>${esc(g.edition) || '—'}</td>
+        <td>${regionBadge(g.region)}</td>
+        <td>${g.quantity || 1}</td>
+        <td>${g.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(g.price_paid, g.price_paid_currency)}</span>` : '—'}</td>
+        <td>${g.price_value != null ? `<span class="price-value">${Currency.formatWithBase(g.price_value, g.price_value_currency)}</span>${diff ? '<br>' + diff : ''}` : '—'}</td>
+        <td>${checkmark(g.finished)}</td>
+        <td onclick="event.stopPropagation()">
+          <div class="row-actions">
+            <button class="btn btn-ghost btn-sm btn-icon" title="Refresh value" id="refreshBtn-${g.id}" onclick="GamesPage.refreshValue(${g.id}, '${esc(g.title).replace(/'/g, "\\'")}', '${esc(g.platform || '').replace(/'/g, "\\'")}', '${esc(g.condition || '').replace(/'/g, "\\'")}')">↻</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="GamesPage.openEdit(${g.id})">✎</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="GamesPage.deleteGame(${g.id}, '${esc(g.title)}')">✕</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Update sort indicators
+    document.querySelectorAll('#gamesTable thead th[data-sort]').forEach(th => {
+      th.classList.toggle('sorted', th.dataset.sort === sortKey);
+      const icon = th.querySelector('.sort-icon');
+      if (icon) icon.textContent = th.dataset.sort === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
+    });
+  }
+
+  function setSort(key) {
+    if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDir = 'asc'; }
+    renderTable();
+  }
+
+  function openAdd() {
+    editingId = null;
+
+    document.getElementById('gameModalTitle').textContent = 'Add Game';
+    document.getElementById('gameForm').reset();
+    document.getElementById('gameCoverUrl').value = '';
+    renderStars(0);
+    acClose();
+    clearEbayStatus();
+    Currency.populateSelect(document.getElementById('gamePaidCurrency'));
+    Currency.populateSelect(document.getElementById('gameValueCurrency'));
+    openModal('gameModal');
+    setTimeout(() => document.getElementById('gamePlatformInput')?.focus(), 80);
+  }
+
+  async function openEdit(id) {
+    editingId = id;
+
+    document.getElementById('gameModalTitle').textContent = 'Edit Game';
+    acClose();
+    clearEbayStatus();
+    try {
+      const g = await API.getGame(id);
+      fillForm(g);
+      openModal('gameModal');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function openDetail(id) {
+    try {
+      const g = await API.getGame(id);
+      const diff = priceDiff(g.price_paid, g.price_value);
+      document.getElementById('gameDetailContent').innerHTML = `
+        <div class="detail-hero">
+          ${g.cover_url
+            ? `<img src="${esc(g.cover_url)}" alt="" class="detail-cover">`
+            : `<div class="detail-cover-placeholder">🎮</div>`}
+          <div class="detail-hero-info">
+            <div class="detail-hero-title">${esc(g.title)}</div>
+            <div style="margin-top:6px">${platformBadge(g.platform)}${g.condition ? ' ' + conditionBadge(g.condition) : ''}</div>
+            ${g.release_year ? `<div style="color:var(--text-muted);font-size:13px;margin-top:6px">${g.release_year}</div>` : ''}
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">🎮 Game Info</div>
+          <div class="detail-grid">
+            <div class="detail-field"><span class="detail-field-label">Title</span><span class="detail-field-value" style="font-size:17px;font-weight:700">${esc(g.title)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Platform</span><span class="detail-field-value">${platformBadge(g.platform)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Developer</span><span class="detail-field-value">${esc(g.developer) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Publisher</span><span class="detail-field-value">${esc(g.publisher) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Genre</span><span class="detail-field-value">${esc(g.genre) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Release Year</span><span class="detail-field-value">${g.release_year || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Catalog Number</span><span class="detail-field-value">${esc(g.catalog_number) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Edition</span><span class="detail-field-value">${esc(g.edition) || '—'}</span></div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">📦 Condition</div>
+          <div class="detail-grid">
+            <div class="detail-field"><span class="detail-field-label">Condition</span><span class="detail-field-value">${conditionBadge(g.condition)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Region</span><span class="detail-field-value">${regionBadge(g.region)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Quantity</span><span class="detail-field-value">${g.quantity}</span></div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">💰 Pricing</div>
+          <div class="detail-grid">
+            <div class="detail-field"><span class="detail-field-label">Price Paid</span><span class="detail-field-value" style="font-size:18px;font-weight:700">${Currency.formatWithBase(g.price_paid, g.price_paid_currency)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Market Value</span><span class="detail-field-value price-value" style="font-size:18px;font-weight:700">${Currency.formatWithBase(g.price_value, g.price_value_currency)}${diff ? '<br>' + diff : ''}</span></div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">🎯 Personal</div>
+          <div class="detail-grid">
+            <div class="detail-field"><span class="detail-field-label">Finished / Played</span><span class="detail-field-value">${bool(g.finished) ? '✓ Yes' : '— No'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Personal Rating</span><span class="detail-field-value">${starRating(g.personal_rating)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Date Acquired</span><span class="detail-field-value">${fmtDate(g.date_acquired)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Where Purchased</span><span class="detail-field-value">${esc(g.where_purchased) || '—'}</span></div>
+          </div>
+        </div>
+        ${g.remarks ? `<div class="form-section"><div class="form-section-title">📝 Remarks</div><p style="color:var(--text-secondary);line-height:1.6">${esc(g.remarks)}</p></div>` : ''}
+      `;
+      document.getElementById('gameDetailEditBtn').onclick = () => { closeModal('gameDetailModal'); openEdit(id); };
+      openModal('gameDetailModal');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function fillForm(g) {
+    const f = document.getElementById('gameForm');
+    const set = (name, val) => { const el = f.elements[name]; if (el) el.value = val ?? ''; };
+    const setCheck = (name, val) => { const el = f.elements[name]; if (el) el.checked = bool(val); };
+    set('title', g.title); set('platform', g.platform); set('condition', g.condition);
+    set('edition', g.edition); set('quantity', g.quantity);
+    set('genre', g.genre); set('developer', g.developer); set('publisher', g.publisher);
+    set('release_year', g.release_year); set('catalog_number', g.catalog_number);
+    setCheck('finished', g.finished);
+    set('price_paid', g.price_paid);
+    set('cover_url', g.cover_url);
+    Currency.populateSelect(document.getElementById('gamePaidCurrency'), g.price_paid_currency);
+    set('date_acquired', g.date_acquired); set('where_purchased', g.where_purchased);
+    set('remarks', g.remarks);
+    renderStars(g.personal_rating || 0);
+    document.getElementById('gameForm').dataset.rating = g.personal_rating || 0;
+  }
+
+  function renderStars(n) {
+    const clamped = Math.min(n, 5);
+    document.querySelectorAll('.star').forEach((s, i) => {
+      s.classList.toggle('active', i < clamped);
+    });
+    document.getElementById('gameForm').dataset.rating = clamped;
+  }
+
+  function regionFromPlatform(platform) {
+    const p = (platform || '').toLowerCase();
+    if (p.startsWith('pal ') || p.includes(' pal ')) return 'PAL (Europe)';
+    if (p.startsWith('japan ') || p === 'famicom' || p === 'super famicom' || p.includes('japan ')) return 'NTSC-J (Japan)';
+    return 'NTSC (USA)';
+  }
+
+  async function saveGame() {
+    const f = document.getElementById('gameForm');
+    const platform = f.elements.platform.value.trim();
+    const data = {
+      title: f.elements.title.value.trim(),
+      platform,
+      condition: f.elements.condition.value,
+      edition: f.elements.edition.value.trim(),
+      region: regionFromPlatform(platform),
+      quantity: parseInt(f.elements.quantity.value) || 1,
+      genre: f.elements.genre.value,
+      developer: f.elements.developer.value.trim(),
+      publisher: f.elements.publisher.value.trim(),
+      release_year: parseInt(f.elements.release_year.value) || null,
+      catalog_number: f.elements.catalog_number.value.trim(),
+      finished: f.elements.finished.checked,
+      personal_rating: parseInt(f.dataset.rating) || null,
+      price_paid: parseFloat(f.elements.price_paid.value) || null,
+      price_paid_currency: f.elements.price_paid_currency?.value || Currency.settings().base,
+      pricecharting_id: null,
+      cover_url: f.elements.cover_url?.value || null,
+      date_acquired: f.elements.date_acquired.value || null,
+      where_purchased: f.elements.where_purchased.value.trim(),
+      remarks: f.elements.remarks.value.trim(),
+    };
+
+    if (!data.title || !data.platform) {
+      toast('Title and platform are required', 'error'); return;
+    }
+    if (!data.condition) {
+      toast('Condition is required', 'error'); return;
+    }
+    if (!data.edition) {
+      toast('Edition / Print is required', 'error'); return;
+    }
+    if (!data.quantity || data.quantity < 1) {
+      toast('Quantity must be at least 1', 'error'); return;
+    }
+
+    try {
+      const saved = editingId
+        ? await API.updateGame(editingId, data)
+        : await API.createGame(data);
+      closeModal('gameModal');
+      toast(editingId ? 'Game updated!' : 'Game added!', 'success');
+      load();
+      App.loadSidebarCounts();
+      // Fetch price from PriceCharting in the background after saving
+      if (saved?.id) {
+        API.applyPrice({ query: data.title, platform: data.platform, condition: data.condition, item_type: 'games', item_id: saved.id })
+          .then(r => { if (r?.price != null) { toast(`Market value: $${r.price} (PriceCharting)`, 'success'); load(); } })
+          .catch(e => toast(`Price fetch failed: ${e.message}`, 'error'));
+      }
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function deleteGame(id, title) {
+    if (!confirm(`Delete "${title}"?`)) return;
+    try {
+      await API.deleteGame(id);
+      toast('Game deleted', 'success');
+      load();
+      App.loadSidebarCounts();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ===== AUTOCOMPLETE =====
+  let acResults = [];
+  let acFocused = -1;
+  let acTimer = null;
+
+  function acOpen() { document.getElementById('gameTitleDropdown').classList.add('open'); }
+  function acClose() {
+    const dd = document.getElementById('gameTitleDropdown');
+    if (dd) { dd.classList.remove('open'); dd.innerHTML = ''; }
+    acFocused = -1; acResults = [];
+  }
+
+  function acRender() {
+    const dd = document.getElementById('gameTitleDropdown');
+    if (!acResults.length) {
+      dd.innerHTML = `<div class="autocomplete-hint" style="padding:10px 12px">No games found — try different keywords or an alternative title</div>`;
+      return;
+    }
+    dd.innerHTML = acResults.map((g, i) => `
+      <div class="autocomplete-item${i === acFocused ? ' ac-focused' : ''}" data-index="${i}">
+        ${g.cover_url
+          ? `<img class="autocomplete-thumb" src="${esc(g.cover_url)}" alt="" loading="lazy">`
+          : `<div class="autocomplete-thumb-placeholder">🎮</div>`}
+        <div style="flex:1;min-width:0">
+          <div class="autocomplete-name">${esc(g.name)}</div>
+          <div class="autocomplete-meta">${g.year ? g.year + ' · ' : ''}${(g.platforms || []).slice(0, 4).join(', ')}</div>
+        </div>
+      </div>`).join('');
+
+    dd.querySelectorAll('.autocomplete-item').forEach((el, i) => {
+      el.addEventListener('mousedown', (e) => { e.preventDefault(); pickGame(i); });
+    });
+  }
+
+  function acMoveFocus(dir) {
+    const dd = document.getElementById('gameTitleDropdown');
+    const items = dd.querySelectorAll('.autocomplete-item');
+    if (!items.length) return;
+    items[acFocused]?.classList.remove('ac-focused');
+    acFocused = Math.max(0, Math.min(acResults.length - 1, acFocused + dir));
+    items[acFocused]?.classList.add('ac-focused');
+    items[acFocused]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  async function acFetch(q) {
+    const dd = document.getElementById('gameTitleDropdown');
+    dd.innerHTML = `<div class="autocomplete-spinner"><div class="spinner" style="width:14px;height:14px;border-width:2px"></div> Searching…</div>`;
+    acOpen(); acFocused = -1;
+    try {
+      const platform = document.getElementById('gamePlatformInput')?.value.trim() || '';
+      acResults = await API.searchGameDB(q, platform || undefined);
+      acRender();
+    } catch (e) {
+      const hint = (e.message.includes('not found') || e.message.includes('not configured'))
+        ? 'Add your IGDB credentials in ⚙ Settings to enable game autocomplete'
+        : esc(e.message);
+      dd.innerHTML = `<div class="autocomplete-hint" style="padding:10px 12px;color:var(--text-muted)">${hint}</div>`;
+    }
+  }
+
+  async function pickGame(index) {
+    const item = acResults[index];
+    if (!item) return;
+    document.getElementById('gameTitleInput').value = item.name;
+    document.getElementById('gameCoverUrl').value = item.cover_url || '';
+    acClose();
+    document.getElementById('acInlineSpinner').style.display = '';
+    try {
+      const details = await API.getGameDetails(item.id);
+      fillFromDB(details);
+    } catch (e) {
+      toast('Could not load full details — title was set', 'info');
+    } finally {
+      document.getElementById('acInlineSpinner').style.display = 'none';
+    }
+  }
+
+  function fillFromDB(g) {
+    const f = document.getElementById('gameForm');
+    function flash(name, value) {
+      const el = name === 'genre' ? f.querySelector('[name="genre"]') : f.elements[name];
+      if (!el || value === null || value === undefined || value === '') return;
+      el.value = value;
+      el.classList.add('autofill-flash');
+      setTimeout(() => el.classList.remove('autofill-flash'), 700);
+    }
+    // Title and platform are NOT overwritten here — title was set from item.name in
+    // pickGame (preserving the regional variant the user selected), and platform was
+    // chosen by the user before the search.
+    flash('genre', g.genre);
+    flash('developer', g.developer);
+    flash('publisher', g.publisher);
+    flash('release_year', g.year);
+    toast(`Auto-filled from IGDB: ${document.getElementById('gameTitleInput').value}`, 'success');
+  }
+
+  async function refreshValue(id, title, platform, condition) {
+    const btn = document.getElementById(`refreshBtn-${id}`);
+    if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
+    try {
+      const [priceResult, game] = await Promise.all([
+        API.applyPrice({ query: title, platform, condition, item_type: 'games', item_id: id }),
+        API.getGame(id),
+      ]);
+      if (priceResult?.price != null) toast(`Value updated: ${Currency.format(priceResult.price, 'USD')}`, 'success');
+
+      // If cover is missing, try to fetch it from IGDB
+      if (!game.cover_url) {
+        try {
+          const results = await API.searchGameDB(title, platform || undefined);
+          const match = results?.find(r => r.name.toLowerCase() === title.toLowerCase()) || results?.[0];
+          if (match?.cover_url) {
+            await API.updateGame(id, { ...game, cover_url: match.cover_url });
+          }
+        } catch {} // IGDB may not be configured — silently skip
+      }
+
+      load();
+    } catch (e) {
+      toast(`Refresh failed: ${e.message}`, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '↻'; }
+    }
+  }
+
+  async function refreshAllValues() {
+    const btn = document.getElementById('refreshAllGameValues');
+    if (btn) { btn.disabled = true; btn.textContent = '↻ Refreshing…'; }
+    let updated = 0, failed = 0;
+    for (const g of allGames) {
+      try {
+        await API.applyPrice({ query: g.title, platform: g.platform, condition: g.condition, item_type: 'games', item_id: g.id });
+        updated++;
+      } catch { failed++; }
+    }
+    toast(`Updated ${updated}${failed ? `, ${failed} failed` : ''} values`, updated > 0 ? 'success' : 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh All Values'; }
+    load();
+  }
+
+  function clearEbayStatus() {
+    const el = document.getElementById('ebayFetchStatus');
+    if (el) { el.style.color = 'var(--text-muted)'; el.textContent = 'Will be fetched after saving'; }
+  }
+
+
+  function initAutocomplete() {
+    const input = document.getElementById('gameTitleInput');
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+      clearTimeout(acTimer);
+      const q = input.value.trim();
+      if (q.length < 2) { acClose(); return; }
+      acTimer = setTimeout(() => acFetch(q), 280);
+    });
+
+    input.addEventListener('keydown', e => {
+      const dd = document.getElementById('gameTitleDropdown');
+      if (!dd.classList.contains('open')) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); acMoveFocus(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); acMoveFocus(-1); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (acFocused >= 0) pickGame(acFocused); }
+      else if (e.key === 'Escape') acClose();
+    });
+
+    input.addEventListener('blur', () => setTimeout(acClose, 150));
+
+    document.getElementById('gameModal')?.addEventListener('click', e => {
+      if (e.target === e.currentTarget) acClose();
+    });
+  }
+
+  function init() {
+    // Search
+    const searchInput = document.getElementById('gamesSearch');
+    searchInput?.addEventListener('input', debounce(e => {
+      searchTerm = e.target.value.trim();
+      load();
+    }, 300));
+
+    // Filters
+    document.getElementById('filterGamePlatform')?.addEventListener('change', e => { filterPlatform = e.target.value; load(); });
+    document.getElementById('filterGameCondition')?.addEventListener('change', e => { filterCondition = e.target.value; load(); });
+    document.getElementById('filterGameGenre')?.addEventListener('change', e => { filterGenre = e.target.value; load(); });
+
+    // Finished filter chips
+    document.querySelectorAll('[data-finished-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('[data-finished-filter]').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        filterFinished = chip.dataset.finishedFilter;
+        load();
+      });
+    });
+
+    // Table sort
+    document.querySelectorAll('#gamesTable thead th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => setSort(th.dataset.sort));
+    });
+
+    // Stars
+    document.querySelectorAll('.star').forEach((star, i) => {
+      star.addEventListener('click', () => renderStars(i + 1));
+      star.addEventListener('dblclick', () => renderStars(0));
+    });
+
+    // Currency selects + live conversion preview
+    function wireConversion(inputId, selectId, previewId) {
+      const input = document.getElementById(inputId);
+      const select = document.getElementById(selectId);
+      const preview = document.getElementById(previewId);
+      if (!input || !select || !preview) return;
+      const update = () => {
+        const p = Currency.preview(input.value, select.value);
+        preview.textContent = p ? '≈ ' + p : '';
+      };
+      input.addEventListener('input', update);
+      select.addEventListener('change', update);
+    }
+    wireConversion('gamePricePaid', 'gamePaidCurrency', 'gamePaidConversion');
+
+    // Form submit
+    document.getElementById('saveGameBtn')?.addEventListener('click', saveGame);
+
+    // Close modals
+    document.querySelectorAll('[data-close-modal]').forEach(el => {
+      el.addEventListener('click', () => closeModal(el.dataset.closeModal));
+    });
+
+    // Close on overlay click
+    document.getElementById('gameModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) { closeModal('gameModal'); acClose(); } });
+    document.getElementById('gameDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('gameDetailModal'); });
+
+    // Catalog number lookup (PS1/PS2/PS3)
+    initCatalogLookup();
+
+    // Autocomplete
+    initAutocomplete();
+  }
+
+  function initCatalogLookup() {
+    const input = document.getElementById('gameCatalogNumber');
+    if (!input) return;
+    let timer;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      const val = input.value.trim();
+      if (val.length < 7) return; // too short to be a valid serial
+      timer = setTimeout(() => catalogLookup(val), 500);
+    });
+  }
+
+  async function catalogLookup(serial) {
+    const f = document.getElementById('gameForm');
+    try {
+      const result = await API.lookupCatalog(serial);
+      const titleEl = f.elements.title;
+      const platformEl = f.elements.platform;
+      if (titleEl)    titleEl.value    = result.title;
+      if (platformEl) platformEl.value = result.platform;
+      toast(`Catalog: ${result.title} (${result.platform})`, 'success');
+    } catch {
+      // 404 = not found, silently ignore (user will fill manually)
+    }
+  }
+
+  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues };
+})();
