@@ -55,7 +55,9 @@ const PLATFORM_COLORS = {
   'super famicom':     { bg: 'rgba(139,92,246,0.18)',  color: '#c4b5fd' },
   'nintendo 64':       { bg: 'rgba(16,185,129,0.18)',  color: '#6ee7b7' },
   'gamecube':          { bg: 'rgba(124,58,237,0.18)',  color: '#a78bfa' },
+  'pal gamecube':      { bg: 'rgba(124,58,237,0.18)',  color: '#a78bfa' },
   'wii':               { bg: 'rgba(148,163,184,0.18)', color: '#cbd5e1' },
+  'pal wii':           { bg: 'rgba(148,163,184,0.18)', color: '#cbd5e1' },
   'wii u':             { bg: 'rgba(37,99,235,0.18)',   color: '#93c5fd' },
   'nintendo switch':   { bg: 'rgba(239,68,68,0.18)',   color: '#f87171' },
   // Nintendo handheld

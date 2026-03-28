@@ -5,7 +5,7 @@ const Platforms = (() => {
 
   // Ordered groups for the settings chip grid
   const GROUPS = [
-    { label: 'Nintendo Home', platforms: ['NES', 'PAL NES', 'Famicom', 'SNES', 'PAL SNES', 'Super Famicom', 'Nintendo 64', 'PAL Nintendo 64', 'Japan Nintendo 64', 'GameCube', 'Wii', 'Wii U', 'Nintendo Switch'] },
+    { label: 'Nintendo Home', platforms: ['NES', 'PAL NES', 'Famicom', 'SNES', 'PAL SNES', 'Super Famicom', 'Nintendo 64', 'PAL Nintendo 64', 'Japan Nintendo 64', 'GameCube', 'PAL GameCube', 'Wii', 'PAL Wii', 'Wii U', 'Nintendo Switch'] },
     { label: 'Nintendo Handheld', platforms: ['Game Boy', 'Game Boy Color', 'Game Boy Advance', 'Nintendo DS', 'Nintendo 3DS'] },
     { label: 'Sony Home', platforms: ['PlayStation', 'PAL PlayStation', 'Japan PlayStation', 'PlayStation 2', 'PAL PlayStation 2', 'Japan PlayStation 2', 'PlayStation 3', 'PlayStation 4', 'PlayStation 5'] },
     { label: 'Sony Handheld', platforms: ['PSP', 'PS Vita'] },

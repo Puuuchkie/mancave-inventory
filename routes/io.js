@@ -25,15 +25,29 @@ const HW_COLS = [
 // ── Known-value lists (used by preview / wizard) ─────────────────────────────
 
 const KNOWN_PLATFORMS = [
-  'NES', 'Famicom', 'SNES', 'Super Famicom', 'Nintendo 64', 'GameCube',
-  'Wii', 'Wii U', 'Nintendo Switch',
+  // Nintendo home
+  'NES', 'PAL NES', 'Famicom',
+  'SNES', 'PAL SNES', 'Super Famicom',
+  'Nintendo 64', 'PAL Nintendo 64', 'Japan Nintendo 64',
+  'GameCube', 'PAL GameCube',
+  'Wii', 'PAL Wii', 'Wii U', 'Nintendo Switch',
+  // Nintendo handheld
   'Game Boy', 'Game Boy Color', 'Game Boy Advance',
   'Nintendo DS', 'Nintendo 3DS',
-  'PlayStation', 'PlayStation 2', 'PlayStation 3', 'PlayStation 4', 'PlayStation 5',
+  // Sony home
+  'PlayStation', 'PAL PlayStation', 'Japan PlayStation',
+  'PlayStation 2', 'PAL PlayStation 2', 'Japan PlayStation 2',
+  'PlayStation 3', 'PlayStation 4', 'PlayStation 5',
+  // Sony handheld
   'PSP', 'PS Vita',
-  'Sega Master System', 'Sega Genesis / Mega Drive', 'Mega Drive',
-  'Sega Saturn', 'Sega Dreamcast', 'Dreamcast', 'Game Gear',
+  // Microsoft
   'Xbox', 'Xbox 360', 'Xbox One', 'Xbox Series X/S',
+  // Sega
+  'Sega Master System',
+  'Sega Genesis', 'Sega Mega Drive', 'Japan Mega Drive',
+  'Sega Saturn', 'PAL Sega Saturn', 'Japan Sega Saturn',
+  'Sega Dreamcast', 'Game Gear',
+  // Other
   'Atari 2600', 'Neo Geo', 'PC', 'Multi-Platform',
 ];
 

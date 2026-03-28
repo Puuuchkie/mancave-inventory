@@ -7,7 +7,7 @@ const ALL_PLATFORMS = [
   'NES', 'PAL NES', 'Famicom',
   'SNES', 'PAL SNES', 'Super Famicom',
   'Nintendo 64', 'PAL Nintendo 64', 'Japan Nintendo 64',
-  'GameCube', 'Wii', 'Wii U', 'Nintendo Switch',
+  'GameCube', 'PAL GameCube', 'Wii', 'PAL Wii', 'Wii U', 'Nintendo Switch',
   // Nintendo handheld
   'Game Boy', 'Game Boy Color', 'Game Boy Advance', 'Nintendo DS', 'Nintendo 3DS',
   // Sony home

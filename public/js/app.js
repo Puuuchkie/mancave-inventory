@@ -62,7 +62,12 @@ const App = (() => {
     if (page === 'dashboard') Dashboard.load();
     else if (page === 'games') GamesPage.load();
     else if (page === 'hardware') HardwarePage.load();
-    else if (page === 'settings') { loadSettings(); renderCurrencySettings(); renderPlatformSettings(); }
+    else if (page === 'settings') {
+      loadSettings();
+      // Load fresh data before rendering so chips are never empty due to a race
+      Promise.all([Platforms.load(), Currency.load()])
+        .finally(() => { renderCurrencySettings(); renderPlatformSettings(); });
+    }
     else if (page === 'logs') { LogsPage.load(); LogsPage.startAutoRefresh(); }
   }
 
