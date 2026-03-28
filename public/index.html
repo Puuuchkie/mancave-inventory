@@ -269,17 +269,11 @@
       <div class="settings-card">
         <div class="settings-title">Market Value Lookup — PriceCharting</div>
         <div class="settings-desc">
-          Fetches condition-aware market prices (loose, CIB, sealed, graded) from PriceCharting.com.
-          Register for a free API key at <strong>pricecharting.com/api</strong> — no credit card needed.
+          Market values are fetched automatically from <strong>PriceCharting.com</strong> when you save a game.
+          Prices are condition-aware — CIB, loose, and sealed are looked up separately.
+          No account or API key needed.
         </div>
-        <div id="tokenStatus" class="token-status missing" style="margin-bottom:16px">✕ Not configured</div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <input type="password" class="form-control" id="tokenInput" placeholder="Paste your API key here" style="max-width:380px">
-          <button class="btn btn-primary" id="saveTokenBtn">Save</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:8px">
-          Free tier · No credit card needed · Key stored locally
-        </p>
+        <div class="token-status ok">✓ No setup required</div>
       </div>
 
       <div class="settings-card">

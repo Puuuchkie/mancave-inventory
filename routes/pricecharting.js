@@ -4,37 +4,47 @@ const axios = require('axios');
 const db = require('../database');
 const logger = require('../logger');
 
-const PC_BASE = 'https://www.pricecharting.com/api';
+const PC_BASE = 'https://www.pricecharting.com';
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+// Search endpoint returns JSON by default — don't set Accept:text/html or it switches to HTML
+const SEARCH_HEADERS = { 'User-Agent': UA };
+// Game page needs browser-like headers to return full HTML
+const PAGE_HEADERS  = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.5' };
 
-function getApiKey() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'pricecharting_api_key'").get();
-  return row?.value || '';
+function slugify(str) {
+  return String(str).toLowerCase()
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
-// Map our condition values to the PriceCharting API price field
-function priceFieldForCondition(condition) {
-  if (!condition) return 'loose-price';
+// Map our condition values to the PriceCharting price element ID
+function priceIdForCondition(condition) {
+  if (!condition) return 'used_price';
   const c = condition.toLowerCase();
-  if (c.includes('sealed')) return 'new-price';
-  if (c.includes('graded')) return 'graded-price';
-  if (c.includes('cib') || (c.includes('complete') && !c.includes('no manual'))) return 'complete-price';
-  if (c.includes('box only')) return 'box-only-price';
-  if (c.includes('manual only')) return 'manual-only-price';
-  return 'loose-price';
+  if (c.includes('sealed')) return 'new_price';
+  if (c.includes('graded')) return 'graded_price';
+  if (c.includes('cib') || (c.includes('complete') && !c.includes('no manual'))) return 'complete_price';
+  if (c.includes('box only')) return 'box_only_price';
+  if (c.includes('manual only')) return 'manual_only_price';
+  return 'used_price';
+}
+
+// Extract a single price from PriceCharting game page HTML by element ID
+function extractPrice(html, priceId) {
+  const re = new RegExp('id="' + priceId + '"[\\s\\S]*?\\$([\\d,]+\\.\\d{2})');
+  const m = html.match(re);
+  return m ? parseFloat(m[1].replace(/,/g, '')) : null;
 }
 
 async function fetchPriceFromPC(title, platform, condition) {
-  const key = getApiKey();
-  if (!key) throw new Error('PriceCharting API key not configured — add it in Settings');
-
-  // 1. Search for the product
-  const q = [title, platform].filter(Boolean).join(' ');
-  const searchResp = await axios.get(`${PC_BASE}/products`, {
-    params: { q, id: key },
-    timeout: 10000,
+  // 1. Search for the game (returns JSON without auth)
+  const q = encodeURIComponent([title, platform].filter(Boolean).join(' '));
+  const searchResp = await axios.get(`${PC_BASE}/search-products?q=${q}&type=videogames`, {
+    headers: SEARCH_HEADERS, responseType: 'text', timeout: 10000,
   });
 
-  const data = searchResp.data;
+  const data = JSON.parse(searchResp.data);
   if (!data.products?.length) {
     logger.warn('pricecharting', `No results for "${title}" on "${platform}"`);
     throw new Error('Game not found on PriceCharting');
@@ -47,7 +57,8 @@ async function fetchPriceFromPC(title, platform, condition) {
   const np = normalize(platform);
 
   function scoreProduct(p) {
-    const pn = normalize(p['product-name'] || '');
+    // Title score (0–100)
+    const pn = normalize(p.productName);
     let titleScore;
     if (pn === nt) titleScore = 100;
     else if (pn.startsWith(nt + ' ')) titleScore = 80;
@@ -58,9 +69,10 @@ async function fetchPriceFromPC(title, platform, condition) {
       const overlap = qWords.filter(w => pWords.has(w)).length;
       titleScore = (overlap / Math.max(qWords.length, 1)) * 40;
     }
+    // Console score (0–50): bonus when platform matches PriceCharting consoleName
     let consoleScore = 0;
     if (np) {
-      const cn = normalize(p['console-name'] || '');
+      const cn = normalize(p.consoleName);
       if (cn === np) consoleScore = 50;
       else if (cn.includes(np) || np.includes(cn)) consoleScore = 25;
     }
@@ -74,29 +86,25 @@ async function fetchPriceFromPC(title, platform, condition) {
     if (s > bestScore) { product = p; bestScore = s; }
   }
 
-  // 2. Fetch full product details by ID to get condition-specific prices
-  const detailResp = await axios.get(`${PC_BASE}/product`, {
-    params: { id: product.id, key },
-    timeout: 10000,
+  const url = `${PC_BASE}/game/${slugify(product.consoleName)}/${slugify(product.productName)}`;
+
+  // 2. Fetch the game page and extract the condition-specific price
+  const pageResp = await axios.get(url, {
+    headers: PAGE_HEADERS, responseType: 'text', timeout: 10000,
   });
 
-  const detail = detailResp.data;
-  const priceField = priceFieldForCondition(condition);
-  // Prices come back in cents — divide by 100
-  let price = detail[priceField] != null ? detail[priceField] / 100 : null;
+  const priceId = priceIdForCondition(condition);
+  let price = extractPrice(pageResp.data, priceId);
 
-  // Fallback: if specific condition price not available, try loose
-  if ((price === null || price === 0) && priceField !== 'loose-price') {
-    const fallback = detail['loose-price'];
-    price = fallback != null ? fallback / 100 : null;
+  // Fallback: if graded/box/manual price not listed, try used_price
+  if (price === null && priceId !== 'used_price') {
+    price = extractPrice(pageResp.data, 'used_price');
   }
 
-  if (price === null || price === 0) throw new Error('Price not available on PriceCharting');
+  if (price === null) throw new Error('Price not available on PriceCharting');
 
-  const productName = detail['product-name'] || product['product-name'];
-  const consoleName = detail['console-name'] || product['console-name'];
-  logger.success('pricecharting', `${productName} / ${consoleName} → ${priceField}: $${price}`);
-  return { price, product_name: productName, console_name: consoleName };
+  logger.success('pricecharting', `${product.productName} / ${product.consoleName} → ${priceId}: $${price}`, `query="${title}" platform="${platform}"`);
+  return { price, url, product_name: product.productName, console_name: product.consoleName };
 }
 
 // GET /search — used by hardware page manual price search
@@ -105,7 +113,7 @@ router.get('/search', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Query parameter q is required' });
   try {
     const result = await fetchPriceFromPC(q, '', condition || '');
-    res.json({ price: result.price, count: 1 });
+    res.json({ price: result.price, count: 1, source: result.url });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -122,25 +130,15 @@ router.post('/apply', async (req, res) => {
     const table = item_type === 'hardware' ? 'hardware' : 'games';
     db.prepare(`UPDATE ${table} SET price_value = ?, price_value_currency = 'USD', updated_at = datetime('now') WHERE id = ?`)
       .run(result.price, item_id);
-    res.json({ price: result.price });
+    res.json({ price: result.price, url: result.url });
   } catch (err) {
     logger.error('pricecharting', err.message, `query="${req.body.query}" platform="${req.body.platform}"`);
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /token — key status (keeps existing frontend calls working)
-router.get('/token', (req, res) => {
-  const key = getApiKey();
-  res.json({ configured: !!key });
-});
-
-// POST /token — save API key
-router.post('/token', (req, res) => {
-  const { token } = req.body;
-  if (!token) return res.status(400).json({ error: 'API key is required' });
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('pricecharting_api_key', ?)").run(token);
-  res.json({ success: true });
-});
+// No API key needed — these are kept so the settings UI doesn't break
+router.get('/token', (req, res) => res.json({ configured: true }));
+router.post('/token', (req, res) => res.json({ success: true }));
 
 module.exports = router;
