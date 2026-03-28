@@ -38,13 +38,63 @@ const Dashboard = (() => {
         }
       }
 
-      renderBarList('dash-platforms', gStats.platforms, 'platform', 'count');
-      renderBarList('dash-genres', gStats.genres, 'genre', 'count');
+      renderPie('dash-platforms', gStats.platforms, 'platform', 'count');
+      renderPie('dash-genres', gStats.genres, 'genre', 'count');
       renderBarList('dash-hw-types', hStats.types, 'type', 'count');
       renderBarList('dash-hw-platforms', hStats.platforms, 'platform', 'count');
     } catch (e) {
       console.error('Dashboard load error:', e);
     }
+  }
+
+  const PIE_COLORS = [
+    '#4f6ef7','#a78bfa','#3ecf8e','#f0a500','#22d3ee',
+    '#f55','#e879f9','#fb923c','#34d399','#818cf8',
+  ];
+
+  function renderPie(containerId, data, labelKey, countKey) {
+    const el = document.getElementById(containerId);
+    if (!el || !data?.length) {
+      if (el) el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No data yet</p>';
+      return;
+    }
+
+    const items = data.slice(0, 10);
+    const total = items.reduce((s, d) => s + d[countKey], 0);
+    if (!total) { el.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No data yet</p>'; return; }
+
+    // Build SVG pie (conic-gradient-style using stroke-dasharray on a circle)
+    const SIZE = 120, R = 48, CX = 60, CY = 60, CIRC = 2 * Math.PI * R;
+
+    let offset = 0;
+    const slices = items.map((d, i) => {
+      const pct = d[countKey] / total;
+      const dash = pct * CIRC;
+      const gap  = CIRC - dash;
+      const slice = `<circle cx="${CX}" cy="${CY}" r="${R}"
+        fill="none" stroke="${PIE_COLORS[i % PIE_COLORS.length]}"
+        stroke-width="24"
+        stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
+        stroke-dashoffset="${(-offset * CIRC + CIRC / 4).toFixed(2)}"
+        transform="rotate(-90 ${CX} ${CY})"/>`;
+      offset += pct;
+      return slice;
+    });
+
+    const svg = `<svg viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}" style="flex-shrink:0;display:block">
+      ${slices.join('')}
+    </svg>`;
+
+    const legend = items.map((d, i) => {
+      const pct = Math.round(d[countKey] / total * 100);
+      return `<div class="pie-legend-item">
+        <span class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+        <span class="pie-legend-label">${esc(d[labelKey] || 'Unknown')}</span>
+        <span class="pie-legend-count">${d[countKey]} <span style="color:var(--text-muted)">(${pct}%)</span></span>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `<div class="pie-wrap">${svg}<div class="pie-legend">${legend}</div></div>`;
   }
 
   function renderBarList(containerId, data, labelKey, countKey) {

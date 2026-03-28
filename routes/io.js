@@ -76,15 +76,59 @@ function normalizeKey(k) {
   return ALIASES[s] || ALIASES[s.replace(/_/g, ' ')] || s;
 }
 
+// Merges a separate region column into the platform name using our naming convention.
+// e.g. platform="PlayStation 2", region="PAL"  →  platform="PAL PlayStation 2"
+//      platform="PlayStation",   region="Japan" →  platform="Japan PlayStation"
+// NTSC (USA) is the default — no prefix added.
+function mergePlatformRegion(platform, region) {
+  if (!platform || !region) return platform || null;
+  const p = String(platform).trim();
+  const r = String(region).trim().toLowerCase();
+
+  // Already has a regional prefix — don't double-add
+  if (/^(pal|japan|ntsc)/i.test(p)) return p;
+
+  if (r.includes('pal'))   return `PAL ${p}`;
+  if (r.includes('japan') || r.includes('ntsc-j') || r.includes('ntscj')) return `Japan ${p}`;
+  // NTSC (USA), NTSC-U/C, Multi-Region, Universal → no prefix
+  return p;
+}
+
+// Detects if a column value looks like a standalone region code
+const REGION_VALUES = ['pal', 'ntsc', 'ntsc-j', 'ntscj', 'japan', 'usa', 'eur', 'europe',
+  'ntsc (usa)', 'ntsc-j (japan)', 'pal (europe)', 'pal-au (australia)', 'multi-region', 'universal'];
+
+function looksLikeRegion(v) {
+  return v != null && REGION_VALUES.some(r => String(v).toLowerCase().trim().startsWith(r));
+}
+
 function sheetToRows(wb) {
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const raw = XLSX.utils.sheet_to_json(sheet, { defval: null, raw: false });
+  if (!raw.length) return raw;
+
   // Normalize headers on every row
-  return raw.map(row => {
+  const normalized = raw.map(row => {
     const out = {};
     for (const [k, v] of Object.entries(row)) out[normalizeKey(k)] = v;
     return out;
   });
+
+  // Detect whether there's a separate region column that contains regional codes
+  // (as opposed to a region column that has proper values like "PAL (Europe)" which
+  // we already have a field for). We check the first non-null value in the column.
+  const sample = normalized.find(r => r.region != null);
+  const hasSeparateRegion = sample && looksLikeRegion(sample.region);
+
+  if (hasSeparateRegion) {
+    return normalized.map(row => ({
+      ...row,
+      platform: mergePlatformRegion(row.platform, row.region),
+      // keep region as-is so it still saves to the region field
+    }));
+  }
+
+  return normalized;
 }
 
 // ── EXPORT ────────────────────────────────────────────────────────────────────
