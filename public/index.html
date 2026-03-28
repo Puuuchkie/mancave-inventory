@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Man Cave Inventory</title>
-  <link rel="stylesheet" href="/css/style.css?v=2">
+  <link rel="stylesheet" href="/css/style.css?v=3">
 </head>
 <body>
 <div class="app-layout">
@@ -360,14 +360,16 @@
               </datalist>
             </div>
 
-            <!-- Step 2: Title with autocomplete (filtered by platform chosen above) -->
-            <div class="form-group span-2" style="position:relative">
+            <!-- Step 2: Title picker -->
+            <div class="form-group span-2">
               <label class="form-label">Title *
                 <span id="acInlineSpinner" style="display:none;font-size:12px;color:var(--text-muted);margin-left:6px">⟳ Loading details…</span>
               </label>
-              <input type="text" class="form-control" name="title" id="gameTitleInput"
-                placeholder="Start typing a game title…" autocomplete="off">
-              <div class="autocomplete-dropdown" id="gameTitleDropdown"></div>
+              <div class="form-picker" id="gameTitlePicker" tabindex="0" onclick="GamesPage.openGamePicker()">
+                <span class="form-picker-value" id="gameTitleDisplay">Search for a game…</span>
+                <span class="form-picker-icon">⌕</span>
+              </div>
+              <input type="hidden" name="title" id="gameTitleInput">
             </div>
 
             <div class="form-group">
@@ -421,14 +423,9 @@
             </div>
             <div class="form-group">
               <label class="form-label">Edition / Print *</label>
-              <input type="text" class="form-control" name="edition" list="editionList" placeholder="e.g. Black Label, Platinum, GH">
-              <datalist id="editionList">
-                <option>Black Label</option><option>Platinum</option>
-                <option>Greatest Hits</option><option>Player's Choice</option>
-                <option>Classic</option><option>Limited Edition</option>
-                <option>Collector's Edition</option><option>Game of the Year</option>
-                <option>Budget Re-release</option><option>Demo Disc</option>
-              </datalist>
+              <select class="form-control" name="edition" id="gameEditionSelect">
+                <option value="">— Select platform first —</option>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label">Quantity *</label>
@@ -712,18 +709,35 @@
   </div>
 </div>
 
+<!-- ===== GAME PICKER SHEET ===== -->
+<div class="modal-overlay" id="gamePickerSheet" style="display:none">
+  <div class="modal game-picker-modal">
+    <div class="modal-header">
+      <span class="modal-title">Search Game</span>
+      <button class="modal-close" onclick="GamesPage.closeGamePicker()">✕</button>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <input type="text" class="form-control" id="gamePickerSearch"
+        placeholder="Type a game title…" autocomplete="off">
+    </div>
+    <div class="game-picker-results" id="gamePickerResults">
+      <div class="picker-hint">Start typing to search…</div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=2"></script>
-<script src="/js/currency.js?v=2"></script>
-<script src="/js/platforms.js?v=2"></script>
-<script src="/js/utils.js?v=2"></script>
-<script src="/js/dashboard.js?v=2"></script>
-<script src="/js/games.js?v=2"></script>
-<script src="/js/hardware.js?v=2"></script>
-<script src="/js/logs.js?v=2"></script>
-<script src="/js/app.js?v=2"></script>
+<script src="/js/api.js?v=3"></script>
+<script src="/js/currency.js?v=3"></script>
+<script src="/js/platforms.js?v=3"></script>
+<script src="/js/utils.js?v=3"></script>
+<script src="/js/dashboard.js?v=3"></script>
+<script src="/js/games.js?v=3"></script>
+<script src="/js/hardware.js?v=3"></script>
+<script src="/js/logs.js?v=3"></script>
+<script src="/js/app.js?v=3"></script>
 
 </body>
 </html>

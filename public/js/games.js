@@ -14,6 +14,61 @@ const GamesPage = (() => {
   const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'NTSC-U/C', 'Multi-Region'];
   const GENRES = ['Action', 'Action-Adventure', 'Adventure', 'Beat \'em Up', 'Fighting', 'Horror', 'JRPG', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Shoot \'em Up', 'Shooter (FPS)', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Visual Novel', 'Other'];
 
+  // Platform → available editions. Single-item arrays are auto-selected.
+  const EDITIONS = {
+    'PlayStation':              ['Black Label', 'Greatest Hits', 'Demo Disc', 'Limited Edition'],
+    'PAL PlayStation':          ['Black Label', 'Platinum', 'Demo Disc', 'Limited Edition'],
+    'Japan PlayStation':        ['Standard', 'The Best', 'Demo Disc', 'Limited Edition'],
+    'PlayStation 2':            ['Black Label', 'Greatest Hits', 'Demo Disc', 'Limited Edition'],
+    'PAL PlayStation 2':        ['Black Label', 'Platinum', 'Demo Disc', 'Limited Edition'],
+    'Japan PlayStation 2':      ['Standard', 'The Best', 'Demo Disc', 'Limited Edition'],
+    'PlayStation 3':            ['Standard', 'Greatest Hits', 'Game of the Year', 'Demo Disc', 'Limited Edition'],
+    'PAL PlayStation 3':        ['Standard', 'Platinum', 'Demo Disc', 'Limited Edition'],
+    'PlayStation 4':            ['Standard', 'Hits', 'Game of the Year', 'Limited Edition'],
+    'PlayStation 5':            ['Standard', 'Limited Edition'],
+    'PSP':                      ['Standard', 'Greatest Hits', 'Essentials'],
+    'PS Vita':                  ['Standard', 'Essentials'],
+    'NES':                      ['Standard'],
+    'SNES':                     ['Standard'],
+    'Nintendo 64':              ['Standard'],
+    'GameCube':                 ['Standard', "Player's Choice", 'Limited Edition'],
+    'Wii':                      ['Regular'],
+    'Wii U':                    ['Standard', 'Nintendo Selects'],
+    'Nintendo Switch':          ['Standard', 'Limited Edition'],
+    'Game Boy':                 ['Standard'],
+    'Game Boy Color':           ['Standard'],
+    'Game Boy Advance':         ['Standard', "Player's Choice"],
+    'Nintendo DS':              ['Standard', 'Nintendo Selects'],
+    'Nintendo 3DS':             ['Standard', 'Nintendo Selects', 'Limited Edition'],
+    'Xbox':                     ['Standard', 'Platinum Hits'],
+    'Xbox 360':                 ['Standard', 'Platinum Hits', 'Classics'],
+    'Xbox One':                 ['Standard', 'Game of the Year', 'Limited Edition'],
+    'Xbox Series X/S':          ['Standard', 'Limited Edition'],
+    'Sega Master System':       ['Standard'],
+    'Sega Genesis / Mega Drive':['Standard'],
+    'Sega Saturn':              ['Standard'],
+    'Sega Dreamcast':           ['Standard'],
+    'Game Gear':                ['Standard'],
+    'Atari 2600':               ['Standard'],
+    'Neo Geo':                  ['Standard'],
+    'PC':                       ['Standard', 'Game of the Year', "Collector's Edition", 'Limited Edition'],
+  };
+  const DEFAULT_EDITIONS = ['Standard', 'Limited Edition', "Collector's Edition", 'Game of the Year'];
+
+  function updateEditionOptions(platform, currentValue) {
+    const sel = document.getElementById('gameEditionSelect');
+    if (!sel) return;
+    const editions = EDITIONS[platform] || DEFAULT_EDITIONS;
+    sel.innerHTML = editions.map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('');
+    if (currentValue && editions.includes(currentValue)) {
+      sel.value = currentValue;
+    } else if (editions.length === 1) {
+      sel.value = editions[0];
+    } else {
+      sel.value = editions[0]; // default to first option
+    }
+  }
+
   async function load() {
     const tbody = document.getElementById('gamesTableBody');
     tbody.innerHTML = `<tr><td colspan="10" class="loading"><div class="spinner"></div> Loading...</td></tr>`;
@@ -112,12 +167,15 @@ const GamesPage = (() => {
 
   function openAdd() {
     editingId = null;
-
     document.getElementById('gameModalTitle').textContent = 'Add Game';
     document.getElementById('gameForm').reset();
     document.getElementById('gameCoverUrl').value = '';
+    document.getElementById('gameTitleInput').value = '';
+    const disp = document.getElementById('gameTitleDisplay');
+    if (disp) { disp.textContent = 'Search for a game…'; disp.classList.remove('has-value'); }
+    const edSel = document.getElementById('gameEditionSelect');
+    if (edSel) edSel.innerHTML = '<option value="">— Select platform first —</option>';
     renderStars(0);
-    acClose();
     clearEbayStatus();
     Currency.populateSelect(document.getElementById('gamePaidCurrency'));
     Currency.populateSelect(document.getElementById('gameValueCurrency'));
@@ -129,7 +187,7 @@ const GamesPage = (() => {
     editingId = id;
 
     document.getElementById('gameModalTitle').textContent = 'Edit Game';
-    acClose();
+    closeGamePicker();
     clearEbayStatus();
     try {
       const g = await API.getGame(id);
@@ -201,8 +259,17 @@ const GamesPage = (() => {
     const f = document.getElementById('gameForm');
     const set = (name, val) => { const el = f.elements[name]; if (el) el.value = val ?? ''; };
     const setCheck = (name, val) => { const el = f.elements[name]; if (el) el.checked = bool(val); };
-    set('title', g.title); set('platform', g.platform); set('condition', g.condition);
-    set('edition', g.edition); set('quantity', g.quantity);
+
+    // Title picker display
+    document.getElementById('gameTitleInput').value = g.title || '';
+    const disp = document.getElementById('gameTitleDisplay');
+    if (disp) { disp.textContent = g.title || 'Search for a game…'; disp.classList.toggle('has-value', !!g.title); }
+
+    set('platform', g.platform); set('condition', g.condition);
+    set('quantity', g.quantity);
+
+    // Edition: populate options for this platform, then select the saved value
+    updateEditionOptions(g.platform || '', g.edition || '');
     set('genre', g.genre); set('developer', g.developer); set('publisher', g.publisher);
     set('release_year', g.release_year); set('catalog_number', g.catalog_number);
     setCheck('finished', g.finished);
@@ -296,63 +363,54 @@ const GamesPage = (() => {
     } catch (e) { toast(e.message, 'error'); }
   }
 
-  // ===== AUTOCOMPLETE =====
+  // ===== GAME PICKER =====
   let acResults = [];
-  let acFocused = -1;
-  let acTimer = null;
+  let pickerTimer = null;
 
-  function acOpen() { document.getElementById('gameTitleDropdown').classList.add('open'); }
-  function acClose() {
-    const dd = document.getElementById('gameTitleDropdown');
-    if (dd) { dd.classList.remove('open'); dd.innerHTML = ''; }
-    acFocused = -1; acResults = [];
+  function openGamePicker() {
+    const sheet = document.getElementById('gamePickerSheet');
+    if (!sheet) return;
+    sheet.style.display = '';
+    const input = document.getElementById('gamePickerSearch');
+    input.value = '';
+    document.getElementById('gamePickerResults').innerHTML = '<div class="picker-hint">Start typing to search…</div>';
+    acResults = [];
+    setTimeout(() => input.focus(), 80);
   }
 
-  function acRender() {
-    const dd = document.getElementById('gameTitleDropdown');
-    if (!acResults.length) {
-      dd.innerHTML = `<div class="autocomplete-hint" style="padding:10px 12px">No games found — try different keywords or an alternative title</div>`;
-      return;
-    }
-    dd.innerHTML = acResults.map((g, i) => `
-      <div class="autocomplete-item${i === acFocused ? ' ac-focused' : ''}" data-index="${i}">
-        ${g.cover_url
-          ? `<img class="autocomplete-thumb" src="${esc(g.cover_url)}" alt="" loading="lazy">`
-          : `<div class="autocomplete-thumb-placeholder">🎮</div>`}
-        <div style="flex:1;min-width:0">
-          <div class="autocomplete-name">${esc(g.name)}</div>
-          <div class="autocomplete-meta">${g.year ? g.year + ' · ' : ''}${(g.platforms || []).slice(0, 4).join(', ')}</div>
-        </div>
-      </div>`).join('');
-
-    dd.querySelectorAll('.autocomplete-item').forEach((el, i) => {
-      el.addEventListener('mousedown', (e) => { e.preventDefault(); pickGame(i); });
-    });
+  function closeGamePicker() {
+    const sheet = document.getElementById('gamePickerSheet');
+    if (sheet) sheet.style.display = 'none';
   }
 
-  function acMoveFocus(dir) {
-    const dd = document.getElementById('gameTitleDropdown');
-    const items = dd.querySelectorAll('.autocomplete-item');
-    if (!items.length) return;
-    items[acFocused]?.classList.remove('ac-focused');
-    acFocused = Math.max(0, Math.min(acResults.length - 1, acFocused + dir));
-    items[acFocused]?.classList.add('ac-focused');
-    items[acFocused]?.scrollIntoView({ block: 'nearest' });
-  }
-
-  async function acFetch(q) {
-    const dd = document.getElementById('gameTitleDropdown');
-    dd.innerHTML = `<div class="autocomplete-spinner"><div class="spinner" style="width:14px;height:14px;border-width:2px"></div> Searching…</div>`;
-    acOpen(); acFocused = -1;
+  async function fetchPickerResults(q) {
+    const container = document.getElementById('gamePickerResults');
+    container.innerHTML = '<div class="picker-hint"><div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px"></div>Searching…</div>';
     try {
       const platform = document.getElementById('gamePlatformInput')?.value.trim() || '';
       acResults = await API.searchGameDB(q, platform || undefined);
-      acRender();
+      if (!acResults.length) {
+        container.innerHTML = '<div class="picker-hint">No results — try different keywords</div>';
+        return;
+      }
+      container.innerHTML = acResults.map((g, i) => `
+        <div class="picker-item" data-index="${i}">
+          ${g.cover_url
+            ? `<img class="autocomplete-thumb" src="${esc(g.cover_url)}" alt="" loading="lazy">`
+            : `<div class="autocomplete-thumb-placeholder">🎮</div>`}
+          <div style="flex:1;min-width:0">
+            <div class="autocomplete-name">${esc(g.name)}</div>
+            <div class="autocomplete-meta">${g.year ? g.year + ' · ' : ''}${(g.platforms || []).slice(0, 4).join(', ')}</div>
+          </div>
+        </div>`).join('');
+      container.querySelectorAll('.picker-item').forEach((el, i) => {
+        el.addEventListener('click', () => { pickGame(i); closeGamePicker(); });
+      });
     } catch (e) {
-      const hint = (e.message.includes('not found') || e.message.includes('not configured'))
-        ? 'Add your IGDB credentials in ⚙ Settings to enable game autocomplete'
+      const hint = e.message.includes('not configured')
+        ? 'Add your IGDB credentials in ⚙ Settings to enable game search'
         : esc(e.message);
-      dd.innerHTML = `<div class="autocomplete-hint" style="padding:10px 12px;color:var(--text-muted)">${hint}</div>`;
+      container.innerHTML = `<div class="picker-hint" style="color:var(--text-muted)">${hint}</div>`;
     }
   }
 
@@ -360,8 +418,9 @@ const GamesPage = (() => {
     const item = acResults[index];
     if (!item) return;
     document.getElementById('gameTitleInput').value = item.name;
+    const disp = document.getElementById('gameTitleDisplay');
+    if (disp) { disp.textContent = item.name; disp.classList.add('has-value'); }
     document.getElementById('gameCoverUrl').value = item.cover_url || '';
-    acClose();
     document.getElementById('acInlineSpinner').style.display = '';
     try {
       const details = await API.getGameDetails(item.id);
@@ -441,31 +500,33 @@ const GamesPage = (() => {
   }
 
 
-  function initAutocomplete() {
-    const input = document.getElementById('gameTitleInput');
-    if (!input) return;
-
-    input.addEventListener('input', () => {
-      clearTimeout(acTimer);
-      const q = input.value.trim();
-      if (q.length < 2) { acClose(); return; }
-      acTimer = setTimeout(() => acFetch(q), 280);
+  function initGamePicker() {
+    const searchInput = document.getElementById('gamePickerSearch');
+    if (!searchInput) return;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(pickerTimer);
+      const q = searchInput.value.trim();
+      if (q.length < 2) {
+        document.getElementById('gamePickerResults').innerHTML = '<div class="picker-hint">Start typing to search…</div>';
+        return;
+      }
+      pickerTimer = setTimeout(() => fetchPickerResults(q), 300);
     });
-
-    input.addEventListener('keydown', e => {
-      const dd = document.getElementById('gameTitleDropdown');
-      if (!dd.classList.contains('open')) return;
-      if (e.key === 'ArrowDown') { e.preventDefault(); acMoveFocus(1); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); acMoveFocus(-1); }
-      else if (e.key === 'Enter') { e.preventDefault(); if (acFocused >= 0) pickGame(acFocused); }
-      else if (e.key === 'Escape') acClose();
+    // Close sheet on backdrop click
+    document.getElementById('gamePickerSheet')?.addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeGamePicker();
     });
+  }
 
-    input.addEventListener('blur', () => setTimeout(acClose, 150));
-
-    document.getElementById('gameModal')?.addEventListener('click', e => {
-      if (e.target === e.currentTarget) acClose();
+  function initEditionPicker() {
+    const platInput = document.getElementById('gamePlatformInput');
+    if (!platInput) return;
+    let edTimer;
+    platInput.addEventListener('input', () => {
+      clearTimeout(edTimer);
+      edTimer = setTimeout(() => updateEditionOptions(platInput.value.trim()), 300);
     });
+    platInput.addEventListener('change', () => updateEditionOptions(platInput.value.trim()));
   }
 
   function init() {
@@ -526,14 +587,15 @@ const GamesPage = (() => {
     });
 
     // Close on overlay click
-    document.getElementById('gameModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) { closeModal('gameModal'); acClose(); } });
+    document.getElementById('gameModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) { closeModal('gameModal'); closeGamePicker(); } });
     document.getElementById('gameDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('gameDetailModal'); });
 
     // Catalog number lookup (PS1/PS2/PS3)
     initCatalogLookup();
 
-    // Autocomplete
-    initAutocomplete();
+    // Title picker + edition dropdown
+    initGamePicker();
+    initEditionPicker();
   }
 
   function initCatalogLookup() {
@@ -554,13 +616,20 @@ const GamesPage = (() => {
       const result = await API.lookupCatalog(serial);
       const titleEl = f.elements.title;
       const platformEl = f.elements.platform;
-      if (titleEl)    titleEl.value    = result.title;
-      if (platformEl) platformEl.value = result.platform;
+      if (titleEl) {
+        titleEl.value = result.title;
+        const disp = document.getElementById('gameTitleDisplay');
+        if (disp) { disp.textContent = result.title; disp.classList.add('has-value'); }
+      }
+      if (platformEl) {
+        platformEl.value = result.platform;
+        updateEditionOptions(result.platform);
+      }
       toast(`Catalog: ${result.title} (${result.platform})`, 'success');
     } catch {
       // 404 = not found, silently ignore (user will fill manually)
     }
   }
 
-  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues };
+  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker };
 })();
