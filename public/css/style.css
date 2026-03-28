@@ -1325,4 +1325,26 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .settings-card [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
+
+  /* Compact table rows so more fit on screen */
+  #gamesTable td, #gamesTable th,
+  #hardwareTable td, #hardwareTable th { padding: 6px 8px; font-size: 13px; }
+  .td-thumb { width: 32px; padding: 3px 4px; }
+  .row-thumb { width: 26px; height: 34px; }
+  .row-thumb-placeholder { width: 26px; height: 26px; font-size: 14px; }
+  .td-title { font-size: 13px; }
+  .td-sub { font-size: 11px; }
+  .table-header { padding: 8px 12px; }
+
+  /* Filters bar: single scrollable row, no wrapping */
+  .filters-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .filter-select { flex: 0 0 auto; min-width: 110px; font-size: 12px; padding: 5px 8px; }
+  .filter-chip { flex-shrink: 0; font-size: 12px; padding: 4px 10px; }
+  .filters-right { display: none; }
 }
