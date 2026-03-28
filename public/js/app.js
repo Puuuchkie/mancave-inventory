@@ -27,11 +27,13 @@ const App = (() => {
     // Show/hide search and add button
     const searchWrap = document.getElementById('topbarSearchWrap');
     const addBtn = document.getElementById('topbarAddBtn');
+    const fab = document.getElementById('gameFab');
     const isCollection = page === 'games' || page === 'hardware';
     searchWrap.style.display = isCollection ? '' : 'none';
     addBtn.style.display = isCollection ? '' : 'none';
     if (page === 'games')    addBtn.textContent = '+ Add Game';
     if (page === 'hardware') addBtn.textContent = '+ Add Hardware';
+    if (fab) fab.style.display = page === 'games' ? '' : 'none';
 
     // Sync search input between topbar and page search
     if (page === 'games') {
@@ -247,6 +249,7 @@ const App = (() => {
       if (currentPage === 'games') GamesPage.openAdd();
       else if (currentPage === 'hardware') HardwarePage.openAdd();
     });
+    document.getElementById('gameFab')?.addEventListener('click', () => GamesPage.openAdd());
 
     // Settings buttons
     document.getElementById('saveIgdbBtn')?.addEventListener('click', saveIgdbCredentials);

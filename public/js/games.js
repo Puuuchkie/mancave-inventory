@@ -157,6 +157,38 @@ const GamesPage = (() => {
       const icon = th.querySelector('.sort-icon');
       if (icon) icon.textContent = th.dataset.sort === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
     });
+
+    renderCards();
+  }
+
+  function renderCards() {
+    const list = document.getElementById('gamesMobileList');
+    if (!list) return;
+    const sorted = sortData(allGames, sortKey, sortDir);
+    if (!sorted.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎮</div><p>No games found. Tap + to add your first game!</p></div>`;
+      return;
+    }
+    list.innerHTML = sorted.map(g => {
+      const thumb = g.cover_url
+        ? `<img src="${esc(g.cover_url)}" alt="" class="game-card-img" loading="lazy">`
+        : `<div class="game-card-img-placeholder">🎮</div>`;
+      const priceHtml = (g.price_paid != null || g.price_value != null)
+        ? `<div class="game-card-price">
+            ${g.price_paid  != null ? `<span class="price-paid">${Currency.formatWithBase(g.price_paid,  g.price_paid_currency)}</span>` : ''}
+            ${g.price_value != null ? `<span class="price-value">${Currency.formatWithBase(g.price_value, g.price_value_currency)}</span>` : ''}
+           </div>`
+        : '';
+      return `<div class="game-card" onclick="GamesPage.openDetail(${g.id})">
+        <div class="game-card-cover">${thumb}</div>
+        <div class="game-card-body">
+          <div class="game-card-title">${esc(g.title)}</div>
+          <div class="game-card-meta">${platformBadge(g.platform)}${g.condition ? ' ' + conditionBadge(g.condition) : ''}</div>
+          ${priceHtml}
+        </div>
+        ${g.finished ? '<div class="game-card-check">✓</div>' : ''}
+      </div>`;
+    }).join('');
   }
 
   function setSort(key) {

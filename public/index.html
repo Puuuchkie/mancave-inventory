@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Man Cave Inventory</title>
-  <link rel="stylesheet" href="/css/style.css?v=7">
+  <link rel="stylesheet" href="/css/style.css?v=8">
 </head>
 <body>
 <div class="app-layout">
@@ -134,6 +134,9 @@
 
       <!-- Search input (hidden visually, synced from topbar) -->
       <input type="text" id="gamesSearch" style="display:none">
+
+      <!-- Mobile card list (shown instead of table on small screens) -->
+      <div id="gamesMobileList" class="games-card-list"></div>
 
       <div class="table-wrap">
         <div class="table-header">
@@ -724,18 +727,21 @@
   </div>
 </div>
 
+<!-- Floating Action Button (mobile only) -->
+<button class="fab" id="gameFab" aria-label="Add game">+</button>
+
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=4"></script>
-<script src="/js/currency.js?v=4"></script>
-<script src="/js/platforms.js?v=4"></script>
-<script src="/js/utils.js?v=4"></script>
-<script src="/js/dashboard.js?v=4"></script>
-<script src="/js/games.js?v=4"></script>
-<script src="/js/hardware.js?v=4"></script>
-<script src="/js/logs.js?v=4"></script>
-<script src="/js/app.js?v=4"></script>
+<script src="/js/api.js?v=8"></script>
+<script src="/js/currency.js?v=8"></script>
+<script src="/js/platforms.js?v=8"></script>
+<script src="/js/utils.js?v=8"></script>
+<script src="/js/dashboard.js?v=8"></script>
+<script src="/js/games.js?v=8"></script>
+<script src="/js/hardware.js?v=8"></script>
+<script src="/js/logs.js?v=8"></script>
+<script src="/js/app.js?v=8"></script>
 
 </body>
 </html>
