@@ -171,8 +171,7 @@ const GamesPage = (() => {
     document.getElementById('gameForm').reset();
     document.getElementById('gameCoverUrl').value = '';
     document.getElementById('gameTitleInput').value = '';
-    const disp = document.getElementById('gameTitleDisplay');
-    if (disp) { disp.textContent = 'Search for a game…'; disp.classList.remove('has-value'); }
+    document.getElementById('gameTitleResults').innerHTML = '';
     const edSel = document.getElementById('gameEditionSelect');
     if (edSel) edSel.innerHTML = '<option value="">— Select platform first —</option>';
     renderStars(0);
@@ -260,10 +259,8 @@ const GamesPage = (() => {
     const set = (name, val) => { const el = f.elements[name]; if (el) el.value = val ?? ''; };
     const setCheck = (name, val) => { const el = f.elements[name]; if (el) el.checked = bool(val); };
 
-    // Title picker display
     document.getElementById('gameTitleInput').value = g.title || '';
-    const disp = document.getElementById('gameTitleDisplay');
-    if (disp) { disp.textContent = g.title || 'Search for a game…'; disp.classList.toggle('has-value', !!g.title); }
+    document.getElementById('gameTitleResults').innerHTML = '';
 
     set('platform', g.platform); set('condition', g.condition);
     set('quantity', g.quantity);
@@ -368,23 +365,17 @@ const GamesPage = (() => {
   let pickerTimer = null;
 
   function openGamePicker() {
-    const sheet = document.getElementById('gamePickerSheet');
-    if (!sheet) return;
-    sheet.style.display = '';
-    const input = document.getElementById('gamePickerSearch');
-    input.value = '';
-    document.getElementById('gamePickerResults').innerHTML = '<div class="picker-hint">Start typing to search…</div>';
-    acResults = [];
-    input.focus(); // must be synchronous — setTimeout breaks iOS keyboard
+    document.getElementById('gameTitleInput')?.focus();
   }
 
   function closeGamePicker() {
-    const sheet = document.getElementById('gamePickerSheet');
-    if (sheet) sheet.style.display = 'none';
+    const panel = document.getElementById('gameTitleResults');
+    if (panel) panel.innerHTML = '';
+    acResults = [];
   }
 
   async function fetchPickerResults(q) {
-    const container = document.getElementById('gamePickerResults');
+    const container = document.getElementById('gameTitleResults');
     container.innerHTML = '<div class="picker-hint"><div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px"></div>Searching…</div>';
     try {
       const platform = document.getElementById('gamePlatformInput')?.value.trim() || '';
@@ -418,8 +409,7 @@ const GamesPage = (() => {
     const item = acResults[index];
     if (!item) return;
     document.getElementById('gameTitleInput').value = item.name;
-    const disp = document.getElementById('gameTitleDisplay');
-    if (disp) { disp.textContent = item.name; disp.classList.add('has-value'); }
+    document.getElementById('gameTitleResults').innerHTML = '';
     document.getElementById('gameCoverUrl').value = item.cover_url || '';
     document.getElementById('acInlineSpinner').style.display = '';
     try {
@@ -501,20 +491,24 @@ const GamesPage = (() => {
 
 
   function initGamePicker() {
-    const searchInput = document.getElementById('gamePickerSearch');
-    if (!searchInput) return;
-    searchInput.addEventListener('input', () => {
+    const titleInput = document.getElementById('gameTitleInput');
+    if (!titleInput) return;
+    titleInput.addEventListener('input', () => {
       clearTimeout(pickerTimer);
-      const q = searchInput.value.trim();
+      const q = titleInput.value.trim();
+      const panel = document.getElementById('gameTitleResults');
       if (q.length < 2) {
-        document.getElementById('gamePickerResults').innerHTML = '<div class="picker-hint">Start typing to search…</div>';
+        panel.innerHTML = '';
         return;
       }
-      pickerTimer = setTimeout(() => fetchPickerResults(q), 300);
+      pickerTimer = setTimeout(() => fetchPickerResults(q), 350);
     });
-    // Close sheet on backdrop click
-    document.getElementById('gamePickerSheet')?.addEventListener('click', e => {
-      if (e.target === e.currentTarget) closeGamePicker();
+    // Dismiss results when clicking outside
+    document.addEventListener('click', e => {
+      if (!titleInput.contains(e.target) && !document.getElementById('gameTitleResults')?.contains(e.target)) {
+        const panel = document.getElementById('gameTitleResults');
+        if (panel) panel.innerHTML = '';
+      }
     });
   }
 
