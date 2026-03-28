@@ -375,7 +375,7 @@ const GamesPage = (() => {
     input.value = '';
     document.getElementById('gamePickerResults').innerHTML = '<div class="picker-hint">Start typing to search…</div>';
     acResults = [];
-    setTimeout(() => input.focus(), 80);
+    input.focus(); // must be synchronous — setTimeout breaks iOS keyboard
   }
 
   function closeGamePicker() {
