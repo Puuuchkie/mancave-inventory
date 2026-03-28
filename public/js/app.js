@@ -274,6 +274,42 @@ const App = (() => {
       });
     });
 
+    // Export links
+    document.getElementById('exportGamesCsv')?.addEventListener('click',  () => { window.location.href = API.exportGames('csv');    });
+    document.getElementById('exportGamesXlsx')?.addEventListener('click', () => { window.location.href = API.exportGames('xlsx');   });
+    document.getElementById('exportHwCsv')?.addEventListener('click',     () => { window.location.href = API.exportHardware('csv'); });
+    document.getElementById('exportHwXlsx')?.addEventListener('click',    () => { window.location.href = API.exportHardware('xlsx'); });
+
+    // Import handlers
+    function setupImport(inputId, statusId, apiFn, reloadFn) {
+      document.getElementById(inputId)?.addEventListener('change', async function () {
+        const file = this.files[0];
+        if (!file) return;
+        const statusEl = document.getElementById(statusId);
+        statusEl.textContent = 'Reading…';
+        statusEl.style.color = 'var(--text-muted)';
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const b64 = e.target.result.split(',')[1];
+          try {
+            statusEl.textContent = 'Importing…';
+            const r = await apiFn(b64);
+            statusEl.textContent = `✓ ${r.imported} imported${r.skipped ? `, ${r.skipped} skipped` : ''}`;
+            statusEl.style.color = 'var(--green)';
+            reloadFn();
+            App.loadSidebarCounts();
+          } catch (err) {
+            statusEl.textContent = '✕ ' + err.message;
+            statusEl.style.color = 'var(--red)';
+          }
+          this.value = '';
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    setupImport('importGamesFile', 'importGamesStatus', API.importGames, GamesPage.load);
+    setupImport('importHwFile',    'importHwStatus',    API.importHardware, HardwarePage.load);
+
     initDrawer();
     GamesPage.init();
     HardwarePage.init();

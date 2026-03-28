@@ -1017,6 +1017,14 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   margin-top: 5px;
 }
 
+/* ===== IMPORT / EXPORT ===== */
+.io-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.io-block { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.io-block-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
+.io-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.io-row:last-child { border-bottom: none; }
+@media (max-width: 767px) { .io-section { grid-template-columns: 1fr; } }
+
 /* FAB — hidden on desktop, shown by JS on mobile */
 .fab { display: none; }
 .games-card-list { display: none; }

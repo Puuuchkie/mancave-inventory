@@ -55,6 +55,12 @@ const API = {
   // Catalog number lookup (PS1/PS2/PS3)
   lookupCatalog: (serial) => API.request('GET', `/api/catalog/${encodeURIComponent(serial)}`),
 
+  // Import / Export
+  exportGames:    (format) => '/api/io/export/games?format=' + format,
+  exportHardware: (format) => '/api/io/export/hardware?format=' + format,
+  importGames:    (file)     => API.request('POST', '/api/io/import/games',    { file }),
+  importHardware: (file)     => API.request('POST', '/api/io/import/hardware', { file }),
+
   // Logs
   getLogs:   () => API.request('GET', '/api/logs'),
   clearLogs: () => API.request('DELETE', '/api/logs'),

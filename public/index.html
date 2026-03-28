@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Man Cave Inventory</title>
-  <link rel="stylesheet" href="/css/style.css?v=10">
+  <link rel="stylesheet" href="/css/style.css?v=11">
 </head>
 <body>
 <div class="app-layout">
@@ -274,6 +274,58 @@
           No account or API key needed.
         </div>
         <div class="token-status ok">✓ No setup required</div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-title">Import &amp; Export</div>
+        <div class="settings-desc">
+          Export your collection to CSV or Excel. Import from a CSV or Excel file with matching column headers.
+          <strong>Importing appends to your existing data</strong> — it does not overwrite or deduplicate.
+        </div>
+
+        <div class="io-section">
+          <div class="io-block">
+            <div class="io-block-title">🎮 Games</div>
+            <div class="io-row">
+              <span style="color:var(--text-secondary);font-size:13px">Export</span>
+              <div style="display:flex;gap:8px">
+                <a class="btn btn-secondary btn-sm" id="exportGamesCsv">↓ CSV</a>
+                <a class="btn btn-secondary btn-sm" id="exportGamesXlsx">↓ Excel</a>
+              </div>
+            </div>
+            <div class="io-row">
+              <span style="color:var(--text-secondary);font-size:13px">Import</span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+                  ↑ Choose file
+                  <input type="file" id="importGamesFile" accept=".csv,.xlsx,.xls" style="display:none">
+                </label>
+                <span id="importGamesStatus" style="font-size:12px;color:var(--text-muted)"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="io-block">
+            <div class="io-block-title">🕹️ Hardware</div>
+            <div class="io-row">
+              <span style="color:var(--text-secondary);font-size:13px">Export</span>
+              <div style="display:flex;gap:8px">
+                <a class="btn btn-secondary btn-sm" id="exportHwCsv">↓ CSV</a>
+                <a class="btn btn-secondary btn-sm" id="exportHwXlsx">↓ Excel</a>
+              </div>
+            </div>
+            <div class="io-row">
+              <span style="color:var(--text-secondary);font-size:13px">Import</span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+                  ↑ Choose file
+                  <input type="file" id="importHwFile" accept=".csv,.xlsx,.xls" style="display:none">
+                </label>
+                <span id="importHwStatus" style="font-size:12px;color:var(--text-muted)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="settings-card">
@@ -737,15 +789,15 @@
 <!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=10"></script>
-<script src="/js/currency.js?v=10"></script>
-<script src="/js/platforms.js?v=10"></script>
-<script src="/js/utils.js?v=10"></script>
-<script src="/js/dashboard.js?v=10"></script>
-<script src="/js/games.js?v=10"></script>
-<script src="/js/hardware.js?v=10"></script>
-<script src="/js/logs.js?v=10"></script>
-<script src="/js/app.js?v=10"></script>
+<script src="/js/api.js?v=11"></script>
+<script src="/js/currency.js?v=11"></script>
+<script src="/js/platforms.js?v=11"></script>
+<script src="/js/utils.js?v=11"></script>
+<script src="/js/dashboard.js?v=11"></script>
+<script src="/js/games.js?v=11"></script>
+<script src="/js/hardware.js?v=11"></script>
+<script src="/js/logs.js?v=11"></script>
+<script src="/js/app.js?v=11"></script>
 
 </body>
 </html>

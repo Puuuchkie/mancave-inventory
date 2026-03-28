@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/games', require('./routes/games'));
@@ -18,6 +18,7 @@ app.use('/api/autocomplete', require('./routes/autocomplete'));
 app.use('/api/currency', require('./routes/currency'));
 app.use('/api/platforms', require('./routes/platforms'));
 app.use('/api/catalog', require('./routes/catalog'));
+app.use('/api/io', require('./routes/io'));
 app.get('/api/logs', (req, res) => res.json(logger.getAll()));
 app.delete('/api/logs', (req, res) => { logger.clear(); res.json({ success: true }); });
 
