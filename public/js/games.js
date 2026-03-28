@@ -545,6 +545,32 @@ const GamesPage = (() => {
     }
   }
 
+  // Map IGDB genre names to our dropdown values.
+  // IGDB returns e.g. "Platform", "Role-playing (RPG)" — our select has "Platformer", "RPG".
+  function mapIgdbGenre(igdbGenre) {
+    if (!igdbGenre) return null;
+    const g = igdbGenre.toLowerCase();
+    if (g.includes('hack and slash') || g.includes('beat')) return "Beat 'em Up";
+    if (g.includes('shoot') && (g.includes("'em") || g.includes('em up'))) return "Shoot 'em Up";
+    if (g.includes('shooter') || g.includes('first-person')) return 'Shooter (FPS)';
+    if (g.includes('action-adventure') || g.includes('action adventure')) return 'Action-Adventure';
+    if (g.includes('visual novel')) return 'Visual Novel';
+    if (g.includes('role-playing') || (g.includes('rpg') && !g.includes('jrpg'))) return 'RPG';
+    if (g.includes('jrpg')) return 'JRPG';
+    if (g.includes('platform')) return 'Platformer';
+    if (g.includes('simulat')) return 'Simulation';
+    if (g.includes('sport')) return 'Sports';
+    if (g.includes('strateg') || g.includes('rts') || g.includes('tbs') || g.includes('tactical')) return 'Strategy';
+    if (g.includes('surviv')) return 'Survival';
+    if (g.includes('horror')) return 'Horror';
+    if (g.includes('action')) return 'Action';
+    if (g.includes('adventure')) return 'Adventure';
+    if (g.includes('fighting')) return 'Fighting';
+    if (g.includes('puzzle')) return 'Puzzle';
+    if (g.includes('racing')) return 'Racing';
+    return null; // don't force an 'Other' — let user pick manually
+  }
+
   function fillFromDB(g) {
     const f = document.getElementById('gameForm');
     function flash(name, value) {
@@ -557,33 +583,47 @@ const GamesPage = (() => {
     // Title and platform are NOT overwritten here — title was set from item.name in
     // pickGame (preserving the regional variant the user selected), and platform was
     // chosen by the user before the search.
-    flash('genre', g.genre);
+    flash('genre', mapIgdbGenre(g.genre));
     flash('developer', g.developer);
     flash('publisher', g.publisher);
     flash('release_year', g.year);
     toast(`Auto-filled from IGDB: ${document.getElementById('gameTitleInput').value}`, 'success');
   }
 
+  // Look up a game on IGDB and return { canonicalTitle, updates } where updates contains
+  // only the fields that are empty in the DB record and have a value from IGDB.
+  async function igdbEnrich(game) {
+    const results = await API.searchGameDB(game.title, game.platform || undefined);
+    if (!results?.length) return { canonicalTitle: game.title, updates: {} };
+    const match = results.find(r => r.name.toLowerCase() === game.title.toLowerCase()) || results[0];
+    const updates = {};
+    if (match.name !== game.title) updates.title = match.name;
+    const genre = mapIgdbGenre(match.genre);
+    if (!game.genre && genre) updates.genre = genre;
+    if (!game.developer && match.developer) updates.developer = match.developer;
+    if (!game.publisher && match.publisher) updates.publisher = match.publisher;
+    if (!game.release_year && match.year) updates.release_year = match.year;
+    if (!game.cover_url && match.cover_url) updates.cover_url = match.cover_url;
+    return { canonicalTitle: match.name, updates };
+  }
+
   async function refreshValue(id, title, platform, condition) {
     const btn = document.getElementById(`refreshBtn-${id}`);
     if (btn) { btn.disabled = true; btn.textContent = '⟳'; }
     try {
-      const [priceResult, game] = await Promise.all([
-        API.applyPrice({ query: title, platform, condition, item_type: 'games', item_id: id }),
-        API.getGame(id),
-      ]);
-      if (priceResult?.price != null) toast(`Value updated: ${Currency.format(priceResult.price, 'USD')}`, 'success');
+      const game = await API.getGame(id);
 
-      // If cover is missing, try to fetch it from IGDB
-      if (!game.cover_url) {
-        try {
-          const results = await API.searchGameDB(title, platform || undefined);
-          const match = results?.find(r => r.name.toLowerCase() === title.toLowerCase()) || results?.[0];
-          if (match?.cover_url) {
-            await API.updateGame(id, { ...game, cover_url: match.cover_url });
-          }
-        } catch {} // IGDB may not be configured — silently skip
-      }
+      // 1. IGDB lookup: get canonical title + fill any empty metadata fields
+      let canonicalTitle = title;
+      try {
+        const { canonicalTitle: ct, updates } = await igdbEnrich(game);
+        canonicalTitle = ct;
+        if (Object.keys(updates).length) await API.updateGame(id, { ...game, ...updates });
+      } catch {} // IGDB not configured — skip
+
+      // 2. Fetch PC price using the IGDB-normalised title
+      const priceResult = await API.applyPrice({ query: canonicalTitle, platform, condition, item_type: 'games', item_id: id });
+      if (priceResult?.price != null) toast(`Value updated: ${Currency.format(priceResult.price, 'USD')}`, 'success');
 
       load();
     } catch (e) {
@@ -598,7 +638,13 @@ const GamesPage = (() => {
     let updated = 0, failed = 0;
     for (const g of allGames) {
       try {
-        await API.applyPrice({ query: g.title, platform: g.platform, condition: g.condition, item_type: 'games', item_id: g.id });
+        let canonicalTitle = g.title;
+        try {
+          const { canonicalTitle: ct, updates } = await igdbEnrich(g);
+          canonicalTitle = ct;
+          if (Object.keys(updates).length) await API.updateGame(g.id, { ...g, ...updates });
+        } catch {}
+        await API.applyPrice({ query: canonicalTitle, platform: g.platform, condition: g.condition, item_type: 'games', item_id: g.id });
         updated++;
       } catch { failed++; }
     }
