@@ -104,6 +104,12 @@ button { cursor: pointer; }
   padding: 10px 10px 6px;
 }
 
+.nav-bottom {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -1094,6 +1100,14 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .app-layout {
     grid-template-columns: 1fr;
     grid-template-rows: 52px 1fr 60px;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Topbar: explicit placement in row 1 */
+  .topbar {
+    grid-row: 1;
+    grid-column: 1;
   }
 
   /* Sidebar → bottom nav bar */
@@ -1115,6 +1129,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
     overflow: hidden;
   }
   .nav-section-label { display: none; }
+  .nav-bottom { margin-top: 0; padding-top: 0; border-top: none; display: contents; }
   .nav-item {
     flex: 1;
     flex-direction: column;
@@ -1139,7 +1154,7 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .topbar-actions { margin-left: 0; }
 
   /* Main content */
-  .main-content { grid-row: 2; grid-column: 1; }
+  .main-content { grid-row: 2; grid-column: 1; -webkit-overflow-scrolling: touch; }
   .page { padding: 12px; }
 
   /* Tables: horizontal scroll, hide less important columns */
