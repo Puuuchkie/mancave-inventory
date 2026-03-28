@@ -13,8 +13,8 @@ const HardwarePage = (() => {
   let lastCheckedIdx = -1;
 
   const TYPES = ['Console', 'Handheld Console', 'Controller / Gamepad', 'Arcade Stick', 'Light Gun', 'Memory Card', 'Peripheral', 'Cable / Adapter', 'Storage', 'Accessory', 'Other'];
-  const CONDITIONS = ['Sealed', 'Mint', 'Near Mint', 'Very Good', 'Good', 'Fair', 'Poor / Damaged', 'For Parts / Repair'];
-  const WORKING = ['Fully Working', 'Partially Working', 'Needs Repair', 'For Parts / Not Working'];
+  const CONDITIONS = ['Factory Sealed', 'Working', 'Partially Working', 'Refurbished', 'Poor', 'For Parts / Repair'];
+  const INTEGRITY = ['Complete In Box', 'Loose', 'No Controllers'];
   const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'Multi-Region', 'Universal'];
 
   async function load() {
@@ -55,7 +55,7 @@ const HardwarePage = (() => {
 
     if (!sorted.length) {
       tbody.innerHTML = `
-        <tr><td colspan="10">
+        <tr><td colspan="16">
           <div class="empty-state">
             <div class="empty-icon">🕹️</div>
             <p>No hardware found. Add your first console or controller!</p>
@@ -78,11 +78,15 @@ const HardwarePage = (() => {
         <td class="td-thumb"><div class="row-thumb-placeholder">${icon}</div></td>
         <td>
           <div class="td-title">${esc(h.name)}</div>
-          <div class="td-sub">${esc(h.manufacturer || '')}${h.model_number ? ' · ' + h.model_number : ''}${h.color_variant ? ' · ' + h.color_variant : ''}</div>
+          <div class="td-sub">${esc(h.manufacturer || '')}${h.color_variant ? ' · ' + h.color_variant : ''}</div>
         </td>
         <td>${typeBadge(h.type)}</td>
         <td>${platformBadge(h.platform)}</td>
         <td>${conditionBadge(h.condition)}</td>
+        <td>${esc(h.integrity) || '—'}</td>
+        <td style="font-size:12px;font-family:monospace;color:var(--text-secondary)">${esc(h.model_number) || '—'}</td>
+        <td style="font-size:12px;font-family:monospace;color:var(--text-muted)">${esc(h.serial_number) || '—'}</td>
+        <td>${h.jailbroken ? '<span style="color:var(--accent);font-weight:600">✓</span>' : '—'}</td>
         <td>${regionBadge(h.region)}</td>
         <td>${h.quantity || 1}</td>
         <td>${h.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid, h.price_paid_currency)}</span>` : '—'}</td>
@@ -255,7 +259,6 @@ const HardwarePage = (() => {
     try {
       const h = await API.getHardwareItem(id);
       const diff = priceDiff(h.price_paid, h.price_value);
-      const workingColor = h.working_condition?.includes('Fully') ? 'var(--green)' : h.working_condition?.includes('Parts') ? 'var(--red)' : 'var(--yellow)';
       document.getElementById('hwDetailContent').innerHTML = `
         <div class="form-section">
           <div class="form-section-title">🕹️ Hardware Info</div>
@@ -264,19 +267,20 @@ const HardwarePage = (() => {
             <div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-value">${typeBadge(h.type)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Platform / System</span><span class="detail-field-value">${platformBadge(h.platform)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Manufacturer</span><span class="detail-field-value">${esc(h.manufacturer) || '—'}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Model Number</span><span class="detail-field-value">${esc(h.model_number) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Model Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.model_number) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Serial Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.serial_number) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Color / Variant</span><span class="detail-field-value">${esc(h.color_variant) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Region</span><span class="detail-field-value">${regionBadge(h.region)}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Serial Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.serial_number) || '—'}</span></div>
           </div>
         </div>
         <div class="form-section">
           <div class="form-section-title">📦 Condition & Completeness</div>
           <div class="detail-grid">
             <div class="detail-field"><span class="detail-field-label">Condition</span><span class="detail-field-value">${conditionBadge(h.condition)}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Working Condition</span><span class="detail-field-value" style="color:${workingColor};font-weight:600">${esc(h.working_condition) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Integrity</span><span class="detail-field-value">${esc(h.integrity) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Has Original Box</span><span class="detail-field-value">${checkmark(h.has_original_box)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Has All Accessories</span><span class="detail-field-value">${checkmark(h.has_all_accessories)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Jailbroken / Modded</span><span class="detail-field-value">${h.jailbroken ? '<span style="color:var(--accent);font-weight:600">Yes</span>' : 'No'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Quantity</span><span class="detail-field-value">${h.quantity}</span></div>
             ${h.modifications ? `<div class="detail-field span-2"><span class="detail-field-label">Modifications</span><span class="detail-field-value">${esc(h.modifications)}</span></div>` : ''}
           </div>
@@ -308,12 +312,14 @@ const HardwarePage = (() => {
     const setCheck = (name, val) => { const el = f.elements[name]; if (el) el.checked = bool(val); };
     set('name', h.name); set('type', h.type); set('platform', h.platform);
     set('manufacturer', h.manufacturer); set('model_number', h.model_number);
-    set('condition', h.condition); set('color_variant', h.color_variant);
+    set('condition', h.condition); set('integrity', h.integrity);
+    set('color_variant', h.color_variant);
     set('region', h.region); set('quantity', h.quantity);
-    set('serial_number', h.serial_number); set('working_condition', h.working_condition);
+    set('serial_number', h.serial_number);
     set('modifications', h.modifications);
     setCheck('has_original_box', h.has_original_box);
     setCheck('has_all_accessories', h.has_all_accessories);
+    setCheck('jailbroken', h.jailbroken);
     set('price_paid', h.price_paid); set('price_value', h.price_value);
     Currency.populateSelect(document.getElementById('hwPaidCurrency'), h.price_paid_currency);
     Currency.populateSelect(document.getElementById('hwValueCurrency'), h.price_value_currency);
@@ -334,13 +340,14 @@ const HardwarePage = (() => {
       manufacturer: f.elements.manufacturer.value.trim(),
       model_number: f.elements.model_number.value.trim(),
       condition: f.elements.condition.value,
+      integrity: f.elements.integrity.value || null,
       color_variant: f.elements.color_variant.value.trim(),
       region: f.elements.region.value,
       quantity: parseInt(f.elements.quantity.value) || 1,
       serial_number: f.elements.serial_number.value.trim(),
       has_original_box: f.elements.has_original_box.checked,
       has_all_accessories: f.elements.has_all_accessories.checked,
-      working_condition: f.elements.working_condition.value,
+      jailbroken: f.elements.jailbroken.checked,
       modifications: f.elements.modifications.value.trim(),
       price_paid: parseFloat(f.elements.price_paid.value) || null,
       price_paid_currency: f.elements.price_paid_currency?.value || Currency.settings().base,

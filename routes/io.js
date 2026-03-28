@@ -17,7 +17,7 @@ const HW_COLS = [
   'name', 'type', 'platform', 'manufacturer', 'model_number',
   'condition', 'color_variant', 'region', 'quantity',
   'serial_number', 'has_original_box', 'has_all_accessories',
-  'working_condition', 'modifications',
+  'working_condition', 'modifications', 'integrity', 'jailbroken',
   'price_paid', 'price_paid_currency', 'price_value', 'price_value_currency',
   'date_acquired', 'where_purchased', 'remarks',
 ];
@@ -267,14 +267,14 @@ router.post('/import/hardware', (req, res) => {
       name, type, platform, manufacturer, model_number,
       condition, color_variant, region, quantity,
       serial_number, has_original_box, has_all_accessories,
-      working_condition, modifications,
+      working_condition, modifications, integrity, jailbroken,
       price_paid, price_paid_currency, price_value, price_value_currency,
       date_acquired, where_purchased, remarks
     ) VALUES (
       ?, ?, ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?, ?,
-      ?, ?,
+      ?, ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?, ?
     )
@@ -294,8 +294,9 @@ router.post('/import/hardware', (req, res) => {
         toInt(r.quantity) || 1,
         toStr(r.serial_number),
         toBool(r.has_original_box), toBool(r.has_all_accessories),
-        toStr(r.working_condition) || 'Fully Working',
+        toStr(r.working_condition) || null,
         toStr(r.modifications),
+        toStr(r.integrity) || null, toBool(r.jailbroken),
         toNum(r.price_paid), toStr(r.price_paid_currency) || 'USD',
         toNum(r.price_value), toStr(r.price_value_currency) || 'USD',
         toStr(r.date_acquired), toStr(r.where_purchased),

@@ -84,6 +84,8 @@ function migrate() {
   add('games',    'cover_url',            'TEXT');
   add('hardware', 'price_paid_currency',  "TEXT DEFAULT 'USD'");
   add('hardware', 'price_value_currency', "TEXT DEFAULT 'USD'");
+  add('hardware', 'integrity',            'TEXT');
+  add('hardware', 'jailbroken',           'INTEGER DEFAULT 0');
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_games_title    ON games(title);

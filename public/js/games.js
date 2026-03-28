@@ -12,7 +12,7 @@ const GamesPage = (() => {
   let selectedIds = new Set();
   let lastCheckedIdx = -1;
 
-  const CONDITIONS = ['Sealed', 'Complete (CIB)', 'Complete (No Manual)', 'Loose', 'Box Only', 'Manual Only', 'Graded', 'Poor / Damaged'];
+  const CONDITIONS = ['Sealed', 'Complete (CIB)', 'Manual Missing', 'Front Cover Missing', 'Loose', 'Box Only', 'Manual Only', 'Graded', 'Poor / Damaged'];
   const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'NTSC-U/C', 'Multi-Region'];
   const GENRES = ['Action', 'Action-Adventure', 'Adventure', 'Beat \'em Up', 'Fighting', 'Horror', 'JRPG', 'Platformer', 'Puzzle', 'Racing', 'RPG', 'Shoot \'em Up', 'Shooter (FPS)', 'Simulation', 'Sports', 'Strategy', 'Survival', 'Visual Novel', 'Other'];
 

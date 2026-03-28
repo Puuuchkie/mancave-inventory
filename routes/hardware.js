@@ -83,7 +83,7 @@ router.post('/', (req, res) => {
   const {
     name, type, platform, manufacturer, model_number, condition,
     color_variant, region, quantity, serial_number, has_original_box,
-    has_all_accessories, working_condition, modifications,
+    has_all_accessories, working_condition, modifications, integrity, jailbroken,
     price_paid, price_paid_currency, price_value, price_value_currency,
     pricecharting_id, date_acquired, where_purchased, remarks
   } = req.body;
@@ -94,15 +94,16 @@ router.post('/', (req, res) => {
     INSERT INTO hardware (
       name, type, platform, manufacturer, model_number, condition,
       color_variant, region, quantity, serial_number, has_original_box,
-      has_all_accessories, working_condition, modifications,
+      has_all_accessories, working_condition, modifications, integrity, jailbroken,
       price_paid, price_paid_currency, price_value, price_value_currency,
       pricecharting_id, date_acquired, where_purchased, remarks
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name, type, platform, manufacturer, model_number, condition,
     color_variant, region, quantity || 1, serial_number,
     has_original_box ? 1 : 0, has_all_accessories ? 1 : 0,
-    working_condition || 'Fully Working', modifications,
+    working_condition || null, modifications,
+    integrity || null, jailbroken ? 1 : 0,
     price_paid, price_paid_currency || 'USD',
     price_value, price_value_currency || 'USD',
     pricecharting_id, date_acquired, where_purchased, remarks
@@ -119,7 +120,7 @@ router.put('/:id', (req, res) => {
   const {
     name, type, platform, manufacturer, model_number, condition,
     color_variant, region, quantity, serial_number, has_original_box,
-    has_all_accessories, working_condition, modifications,
+    has_all_accessories, working_condition, modifications, integrity, jailbroken,
     price_paid, price_paid_currency, price_value, price_value_currency,
     pricecharting_id, date_acquired, where_purchased, remarks
   } = req.body;
@@ -129,7 +130,7 @@ router.put('/:id', (req, res) => {
       name = ?, type = ?, platform = ?, manufacturer = ?, model_number = ?,
       condition = ?, color_variant = ?, region = ?, quantity = ?,
       serial_number = ?, has_original_box = ?, has_all_accessories = ?,
-      working_condition = ?, modifications = ?,
+      working_condition = ?, modifications = ?, integrity = ?, jailbroken = ?,
       price_paid = ?, price_paid_currency = ?,
       price_value = ?, price_value_currency = ?,
       pricecharting_id = ?, date_acquired = ?, where_purchased = ?,
@@ -140,7 +141,8 @@ router.put('/:id', (req, res) => {
     manufacturer, model_number, condition, color_variant, region,
     quantity ?? item.quantity, serial_number,
     has_original_box ? 1 : 0, has_all_accessories ? 1 : 0,
-    working_condition || item.working_condition, modifications,
+    working_condition || null, modifications,
+    integrity || null, jailbroken ? 1 : 0,
     price_paid, price_paid_currency || item.price_paid_currency || 'USD',
     price_value, price_value_currency || item.price_value_currency || 'USD',
     pricecharting_id, date_acquired, where_purchased,
