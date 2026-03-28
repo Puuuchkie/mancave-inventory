@@ -1086,3 +1086,108 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .detail-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== MOBILE (≤ 767px) ===== */
+@media (max-width: 767px) {
+
+  /* Layout: sidebar moves to bottom nav */
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 52px 1fr 60px;
+  }
+
+  /* Sidebar → bottom nav bar */
+  .sidebar {
+    grid-row: 3;
+    grid-column: 1;
+    flex-direction: row;
+    height: 60px;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .sidebar-brand { display: none; }
+  .sidebar-nav {
+    display: flex;
+    flex-direction: row;
+    padding: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+  .nav-section-label { display: none; }
+  .nav-item {
+    flex: 1;
+    flex-direction: column;
+    padding: 6px 2px 4px;
+    font-size: 10px;
+    gap: 2px;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0;
+    text-align: center;
+    margin-bottom: 0;
+    min-width: 0;
+  }
+  .nav-item .nav-icon { font-size: 18px; width: auto; }
+  .nav-item .nav-badge { margin-left: 0; font-size: 10px; padding: 0 5px; }
+
+  /* Topbar */
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-subtitle { display: none; }
+  .topbar-title { font-size: 15px; }
+  .search-wrap { max-width: none; flex: 1; }
+  .topbar-actions { margin-left: 0; }
+
+  /* Main content */
+  .main-content { grid-row: 2; grid-column: 1; }
+  .page { padding: 12px; }
+
+  /* Tables: horizontal scroll, hide less important columns */
+  .table-wrap { overflow-x: auto; }
+
+  /* Games table: keep thumbnail, title, condition, actions */
+  #gamesTable th:nth-child(3),  #gamesTable td:nth-child(3),
+  #gamesTable th:nth-child(5),  #gamesTable td:nth-child(5),
+  #gamesTable th:nth-child(6),  #gamesTable td:nth-child(6),
+  #gamesTable th:nth-child(7),  #gamesTable td:nth-child(7),
+  #gamesTable th:nth-child(8),  #gamesTable td:nth-child(8),
+  #gamesTable th:nth-child(9),  #gamesTable td:nth-child(9),
+  #gamesTable th:nth-child(10), #gamesTable td:nth-child(10) { display: none; }
+
+  /* Hardware table: keep thumbnail, name, condition, actions */
+  #hardwareTable th:nth-child(3), #hardwareTable td:nth-child(3),
+  #hardwareTable th:nth-child(4), #hardwareTable td:nth-child(4),
+  #hardwareTable th:nth-child(6), #hardwareTable td:nth-child(6),
+  #hardwareTable th:nth-child(7), #hardwareTable td:nth-child(7),
+  #hardwareTable th:nth-child(8), #hardwareTable td:nth-child(8),
+  #hardwareTable th:nth-child(9), #hardwareTable td:nth-child(9) { display: none; }
+
+  /* Modals: full-width bottom sheet */
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal {
+    max-width: 100%;
+    max-height: 93vh;
+    border-radius: 16px 16px 0 0;
+  }
+  .modal-body { padding: 14px 16px; }
+  .modal-header { padding: 14px 16px; }
+  .modal-footer { padding: 12px 16px; }
+
+  /* Filters bar */
+  .filters-right { margin-left: 0; width: 100%; justify-content: flex-end; }
+  .filter-select { flex: 1; min-width: 0; }
+
+  /* Stats */
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stat-card { padding: 14px; }
+  .stat-value { font-size: 22px; }
+
+  /* Dashboard */
+  .dashboard-grid { grid-template-columns: 1fr; }
+
+  /* Settings inline grids */
+  .settings-card [style*="grid-template-columns:1fr 1fr"],
+  .settings-card [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
