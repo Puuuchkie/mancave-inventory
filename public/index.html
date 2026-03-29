@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Man Cave Inventory</title>
   <link rel="icon" type="image/svg+xml" href="/images/logo.svg">
-  <link rel="stylesheet" href="/css/style.css?v=25">
+  <link rel="stylesheet" href="/css/style.css?v=26">
 </head>
 <body>
 <div class="app-layout">
@@ -563,23 +563,61 @@
             <!-- Step 1: Platform (comes first to filter autocomplete) -->
             <div class="form-group span-2">
               <label class="form-label">Platform * <span style="color:var(--text-muted);font-weight:400">— choose first to filter game search</span></label>
-              <input type="text" class="form-control" name="platform" id="gamePlatformInput" list="platformList"
-                placeholder="e.g. PlayStation 2, SNES, Game Boy Advance…" autocomplete="off">
-              <datalist id="platformList">
-                <option>NES</option><option>SNES</option><option>Nintendo 64</option>
-                <option>GameCube</option><option>Wii</option><option>Wii U</option>
-                <option>Nintendo Switch</option><option>Game Boy</option>
-                <option>Game Boy Color</option><option>Game Boy Advance</option>
-                <option>Nintendo DS</option><option>Nintendo 3DS</option>
-                <option>PlayStation</option><option>PlayStation 2</option>
-                <option>PlayStation 3</option><option>PlayStation 4</option>
-                <option>PlayStation 5</option><option>PSP</option><option>PS Vita</option>
-                <option>Sega Master System</option><option>Sega Genesis / Mega Drive</option>
-                <option>Sega Saturn</option><option>Sega Dreamcast</option>
-                <option>Game Gear</option><option>Xbox</option><option>Xbox 360</option>
-                <option>Xbox One</option><option>Xbox Series X/S</option>
-                <option>Atari 2600</option><option>Neo Geo</option><option>PC</option>
-              </datalist>
+              <select class="form-control" name="platform" id="gamePlatformInput">
+                <option value="">— Select platform —</option>
+                <optgroup label="Nintendo">
+                  <option>NES</option>
+                  <option>SNES</option>
+                  <option>Nintendo 64</option>
+                  <option>GameCube</option>
+                  <option>PAL GameCube</option>
+                  <option>Wii</option>
+                  <option>PAL Wii</option>
+                  <option>Wii U</option>
+                  <option>Nintendo Switch</option>
+                  <option>Game Boy</option>
+                  <option>Game Boy Color</option>
+                  <option>Game Boy Advance</option>
+                  <option>Nintendo DS</option>
+                  <option>Nintendo 3DS</option>
+                </optgroup>
+                <optgroup label="Sony">
+                  <option>PlayStation</option>
+                  <option>PlayStation 2</option>
+                  <option>PlayStation 3</option>
+                  <option>PlayStation 4</option>
+                  <option>PlayStation 5</option>
+                  <option>PSP</option>
+                  <option>PS Vita</option>
+                  <option>PAL PlayStation</option>
+                  <option>PAL PlayStation 2</option>
+                  <option>PAL PlayStation 3</option>
+                  <option>PAL PlayStation 4</option>
+                  <option>PAL PlayStation 5</option>
+                  <option>Japan PlayStation</option>
+                  <option>Japan PlayStation 2</option>
+                </optgroup>
+                <optgroup label="Sega">
+                  <option>Sega Master System</option>
+                  <option>Sega Genesis / Mega Drive</option>
+                  <option>Sega Saturn</option>
+                  <option>Sega Dreamcast</option>
+                  <option>Game Gear</option>
+                </optgroup>
+                <optgroup label="Microsoft">
+                  <option>Xbox</option>
+                  <option>Xbox 360</option>
+                  <option>Xbox One</option>
+                  <option>Xbox Series X/S</option>
+                </optgroup>
+                <optgroup label="Atari">
+                  <option>Atari 2600</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option>Neo Geo</option>
+                  <option>PC</option>
+                </optgroup>
+              </select>
             </div>
 
             <!-- Step 2: Title with inline picker results -->
@@ -1217,16 +1255,16 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=25"></script>
-<script src="/js/currency.js?v=25"></script>
-<script src="/js/platforms.js?v=25"></script>
-<script src="/js/utils.js?v=25"></script>
-<script src="/js/dashboard.js?v=25"></script>
-<script src="/js/games.js?v=25"></script>
-<script src="/js/hardware.js?v=25"></script>
-<script src="/js/forsale.js?v=25"></script>
-<script src="/js/logs.js?v=25"></script>
-<script src="/js/app.js?v=25"></script>
+<script src="/js/api.js?v=26"></script>
+<script src="/js/currency.js?v=26"></script>
+<script src="/js/platforms.js?v=26"></script>
+<script src="/js/utils.js?v=26"></script>
+<script src="/js/dashboard.js?v=26"></script>
+<script src="/js/games.js?v=26"></script>
+<script src="/js/hardware.js?v=26"></script>
+<script src="/js/forsale.js?v=26"></script>
+<script src="/js/logs.js?v=26"></script>
+<script src="/js/app.js?v=26"></script>
 
 </body>
 </html>

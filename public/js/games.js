@@ -387,7 +387,15 @@ const GamesPage = (() => {
     document.getElementById('gameTitleInput').value = g.title || '';
     document.getElementById('gameTitleResults').innerHTML = '';
 
-    set('platform', g.platform); set('condition', g.condition);
+    // Platform is a select — if saved value isn't in the list, add it dynamically
+    const platSel = document.getElementById('gamePlatformInput');
+    if (platSel && g.platform) {
+      platSel.value = g.platform;
+      if (platSel.value !== g.platform) {
+        platSel.add(new Option(g.platform, g.platform, true, true));
+      }
+    }
+    set('condition', g.condition);
     set('quantity', g.quantity);
 
     // Edition: populate options for this platform, then select the saved value
