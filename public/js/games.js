@@ -638,7 +638,9 @@ const GamesPage = (() => {
     const btn = document.getElementById('refreshAllGameValues');
     if (btn) { btn.disabled = true; btn.textContent = '↻ Refreshing…'; }
     let updated = 0, failed = 0;
-    for (const g of allGames) {
+    for (let i = 0; i < allGames.length; i++) {
+      const g = allGames[i];
+      if (btn) btn.textContent = `↻ ${i + 1}/${allGames.length}…`;
       try {
         let canonicalTitle = g.title;
         try {
@@ -649,6 +651,8 @@ const GamesPage = (() => {
         await API.applyPrice({ query: canonicalTitle, platform: g.platform, condition: g.condition, item_type: 'games', item_id: g.id });
         updated++;
       } catch { failed++; }
+      // Pace requests to avoid rate-limiting (600ms gap between each game)
+      if (i < allGames.length - 1) await new Promise(r => setTimeout(r, 600));
     }
     toast(`Updated ${updated}${failed ? `, ${failed} failed` : ''} values`, updated > 0 ? 'success' : 'error');
     if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh All Values'; }

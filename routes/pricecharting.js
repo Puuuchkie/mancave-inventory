@@ -57,13 +57,36 @@ function extractPrice(html, priceId) {
   return m ? parseFloat(m[1].replace(/,/g, '')) : null;
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Retry a request up to maxRetries times on 403/429 with exponential backoff
+async function axiosWithRetry(opts, maxRetries = 3) {
+  let delay = 1200;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await axios(opts);
+    } catch (err) {
+      const status = err.response?.status;
+      if ((status === 403 || status === 429) && attempt < maxRetries) {
+        logger.warn('pricecharting', `${status} received, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await sleep(delay);
+        delay *= 2;
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 async function fetchPriceFromPC(title, platform, condition) {
   // Normalise platform before sending to PC (strips PAL/Japan prefix, fixes capitalisation)
   const pcPlatform = normalizeForPcSearch(platform);
 
   // 1. Search for the game (returns JSON without auth)
   const q = encodeURIComponent([title, pcPlatform].filter(Boolean).join(' '));
-  const searchResp = await axios.get(`${PC_BASE}/search-products?q=${q}&type=videogames`, {
+  const searchResp = await axiosWithRetry({
+    method: 'get',
+    url: `${PC_BASE}/search-products?q=${q}&type=videogames`,
     headers: SEARCH_HEADERS, responseType: 'text', timeout: 10000,
   });
 
@@ -112,7 +135,8 @@ async function fetchPriceFromPC(title, platform, condition) {
   const url = `${PC_BASE}/game/${slugify(product.consoleName)}/${slugify(product.productName)}`;
 
   // 2. Fetch the game page and extract the condition-specific price
-  const pageResp = await axios.get(url, {
+  const pageResp = await axiosWithRetry({
+    method: 'get', url,
     headers: PAGE_HEADERS, responseType: 'text', timeout: 10000,
   });
 
