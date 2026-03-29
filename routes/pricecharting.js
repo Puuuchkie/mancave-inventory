@@ -133,19 +133,44 @@ async function fetchPriceFromPC(title, platform, condition) {
   }
 
   const url = `${PC_BASE}/game/${slugify(product.consoleName)}/${slugify(product.productName)}`;
-
-  // 2. Fetch the game page and extract the condition-specific price
-  const pageResp = await axiosWithRetry({
-    method: 'get', url,
-    headers: PAGE_HEADERS, responseType: 'text', timeout: 10000,
-  });
-
   const priceId = priceIdForCondition(condition);
-  let price = extractPrice(pageResp.data, priceId);
 
-  // Fallback: if graded/box/manual price not listed, try used_price
+  // 2a. Try to read price directly from search JSON (prices are in cents)
+  // Field names used by PriceCharting search-products endpoint:
+  const JSON_PRICE_MAP = {
+    'used_price':     ['loosePrice',      'used_price',    'loose_price'],
+    'complete_price': ['cibPrice',        'complete_price','cib_price'],
+    'new_price':      ['newPrice',        'new_price',     'sealed_price'],
+    'graded_price':   ['gradedPrice',     'graded_price'],
+    'box_only_price': ['boxOnlyPrice',    'box_only_price'],
+    'manual_only_price':['manualOnlyPrice','manual_only_price'],
+  };
+
+  function priceFromJson(prod, pid) {
+    for (const field of (JSON_PRICE_MAP[pid] || [])) {
+      const v = prod[field];
+      if (v != null && v > 0) return parseFloat((v / 100).toFixed(2));
+    }
+    return null;
+  }
+
+  let price = priceFromJson(product, priceId);
+  // Fallback to loose/used if primary condition has no price in JSON
   if (price === null && priceId !== 'used_price') {
-    price = extractPrice(pageResp.data, 'used_price');
+    price = priceFromJson(product, 'used_price');
+  }
+
+  // 2b. If the search JSON didn't carry prices, scrape the game page
+  if (price === null) {
+    logger.info('pricecharting', `No price in search JSON for "${product.productName}", fetching page: ${url}`);
+    const pageResp = await axiosWithRetry({
+      method: 'get', url,
+      headers: PAGE_HEADERS, responseType: 'text', timeout: 10000,
+    });
+    price = extractPrice(pageResp.data, priceId);
+    if (price === null && priceId !== 'used_price') {
+      price = extractPrice(pageResp.data, 'used_price');
+    }
   }
 
   if (price === null) throw new Error('Price not available on PriceCharting');
