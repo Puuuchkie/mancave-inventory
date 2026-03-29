@@ -17,17 +17,18 @@ const SEARCH_HEADERS = {
 // Game page needs browser-like headers to return full HTML
 const PAGE_HEADERS  = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.5', 'Referer': 'https://www.pricecharting.com/' };
 
-// Strip regional prefix and normalise capitalisation so PC search gets a clean platform name.
-// e.g. "PAL Playstation 1" → "PlayStation"  /  "Japan Nintendo 64" → "Nintendo 64"
+// Normalise platform name capitalisation for PriceCharting.
+// PriceCharting has PAL/Japan variants as separate consoles (e.g. "PAL Playstation 2",
+// "PAL Xbox 360") so we keep the regional prefix — we only fix capitalisation.
 function normalizeForPcSearch(platform) {
   if (!platform) return '';
   let p = platform.trim();
-  // Remove leading regional prefix
-  p = p.replace(/^(PAL|Japan|NTSC-J|NTSC-U\/C|NTSC)\s+/i, '');
-  // Fix capitalisation: "Playstation" → "PlayStation"
+  // Fix "Playstation" → "PlayStation"
   p = p.replace(/\bPlaystation\b/gi, 'PlayStation');
-  // PriceCharting uses "PlayStation" (not "PlayStation 1")
-  p = p.replace(/^PlayStation\s*1$/i, 'PlayStation');
+  // Fix "XBOX" → "Xbox"
+  p = p.replace(/\bXBOX\b/g, 'Xbox');
+  // PriceCharting uses "PlayStation" not "PlayStation 1"
+  p = p.replace(/\bPlayStation\s*1\b/i, 'PlayStation');
   return p;
 }
 
@@ -82,12 +83,13 @@ async function fetchPriceFromPC(title, platform, condition) {
   // Normalise platform before sending to PC (strips PAL/Japan prefix, fixes capitalisation)
   const pcPlatform = normalizeForPcSearch(platform);
 
-  // 1. Search for the game (returns JSON without auth)
+  // 1. Search for the game — use type=prices (type=videogames now 301s to this)
   const q = encodeURIComponent([title, pcPlatform].filter(Boolean).join(' '));
   const searchResp = await axiosWithRetry({
     method: 'get',
-    url: `${PC_BASE}/search-products?q=${q}&type=videogames`,
+    url: `${PC_BASE}/search-products?q=${q}&type=prices`,
     headers: SEARCH_HEADERS, responseType: 'text', timeout: 10000,
+    maxRedirects: 5,
   });
 
   const data = JSON.parse(searchResp.data);
@@ -135,27 +137,24 @@ async function fetchPriceFromPC(title, platform, condition) {
   const url = `${PC_BASE}/game/${slugify(product.consoleName)}/${slugify(product.productName)}`;
   const priceId = priceIdForCondition(condition);
 
-  // 2a. Try to read price directly from search JSON (prices are in cents)
-  // Field names used by PriceCharting search-products endpoint:
-  const JSON_PRICE_MAP = {
-    'used_price':     ['loosePrice',      'used_price',    'loose_price'],
-    'complete_price': ['cibPrice',        'complete_price','cib_price'],
-    'new_price':      ['newPrice',        'new_price',     'sealed_price'],
-    'graded_price':   ['gradedPrice',     'graded_price'],
-    'box_only_price': ['boxOnlyPrice',    'box_only_price'],
-    'manual_only_price':['manualOnlyPrice','manual_only_price'],
-  };
+  // 2a. Try to read price directly from search JSON.
+  // PriceCharting search-products now returns price1 (loose), price2 (CIB),
+  // price3 (new/sealed) as formatted dollar strings e.g. "$17.49".
+  function parseDollarStr(s) {
+    if (!s) return null;
+    const n = parseFloat(String(s).replace(/[^0-9.]/g, ''));
+    return (isNaN(n) || n === 0) ? null : n;
+  }
 
   function priceFromJson(prod, pid) {
-    for (const field of (JSON_PRICE_MAP[pid] || [])) {
-      const v = prod[field];
-      if (v != null && v > 0) return parseFloat((v / 100).toFixed(2));
-    }
-    return null;
+    if (pid === 'used_price')     return parseDollarStr(prod.price1);
+    if (pid === 'complete_price') return parseDollarStr(prod.price2);
+    if (pid === 'new_price')      return parseDollarStr(prod.price3);
+    return null; // graded/box-only/manual-only not in search JSON → page scrape fallback
   }
 
   let price = priceFromJson(product, priceId);
-  // Fallback to loose/used if primary condition has no price in JSON
+  // Fallback to loose if primary condition has no price in JSON
   if (price === null && priceId !== 'used_price') {
     price = priceFromJson(product, 'used_price');
   }
