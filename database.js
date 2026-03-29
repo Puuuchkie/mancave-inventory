@@ -71,6 +71,32 @@ function init() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS sale_listings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'listed',
+      asking_price REAL,
+      asking_price_currency TEXT DEFAULT 'USD',
+      sold_price REAL,
+      sold_price_currency TEXT DEFAULT 'USD',
+      sold_at TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sale_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      listing_id INTEGER NOT NULL REFERENCES sale_listings(id) ON DELETE CASCADE,
+      item_type TEXT NOT NULL,
+      item_id INTEGER,
+      title TEXT NOT NULL,
+      platform TEXT,
+      item_condition TEXT,
+      price_paid REAL,
+      price_paid_currency TEXT DEFAULT 'USD'
+    );
   `);
 }
 
@@ -86,6 +112,8 @@ function migrate() {
   add('hardware', 'price_value_currency', "TEXT DEFAULT 'USD'");
   add('hardware', 'integrity',            'TEXT');
   add('hardware', 'jailbroken',           'INTEGER DEFAULT 0');
+  add('games',    'for_sale',             'INTEGER DEFAULT 0');
+  add('hardware', 'for_sale',             'INTEGER DEFAULT 0');
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_games_title    ON games(title);

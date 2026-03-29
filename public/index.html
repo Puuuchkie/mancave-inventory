@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Man Cave Inventory</title>
-  <link rel="stylesheet" href="/css/style.css?v=22">
+  <link rel="icon" type="image/svg+xml" href="/images/logo.svg">
+  <link rel="stylesheet" href="/css/style.css?v=23">
 </head>
 <body>
 <div class="app-layout">
@@ -12,8 +13,8 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-icon">🎮</div>
-      <span class="brand-name">Man Cave</span>
+      <img src="/images/logo.svg" class="brand-logo" alt="MCI">
+      <span class="brand-name">Man Cave Inventory</span>
     </div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">Overview</div>
@@ -26,9 +27,21 @@
         <span class="nav-icon">🎮</span> Games
         <span class="nav-badge" id="badge-games">0</span>
       </button>
-      <button class="nav-item" data-page="hardware">
-        <span class="nav-icon">🕹️</span> Hardware
-        <span class="nav-badge" id="badge-hardware">0</span>
+      <button class="nav-item" data-page="systems">
+        <span class="nav-icon">🖥️</span> Systems
+        <span class="nav-badge" id="badge-systems">0</span>
+      </button>
+      <button class="nav-item" data-page="controllers">
+        <span class="nav-icon">🕹️</span> Controllers
+        <span class="nav-badge" id="badge-controllers">0</span>
+      </button>
+      <button class="nav-item" data-page="peripherals">
+        <span class="nav-icon">🔌</span> Peripherals
+        <span class="nav-badge" id="badge-peripherals">0</span>
+      </button>
+      <button class="nav-item" data-page="forsale">
+        <span class="nav-icon">🏷️</span> For Sale
+        <span class="nav-badge" id="badge-forsale">0</span>
       </button>
 
       <div class="nav-bottom">
@@ -80,7 +93,7 @@
           <div class="stat-value" id="dash-game-items">—</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Hardware Items</div>
+          <div class="stat-label">Systems / Controllers</div>
           <div class="stat-value purple" id="dash-hw-items">—</div>
         </div>
         <div class="stat-card">
@@ -96,6 +109,15 @@
           <div class="stat-value green" id="dash-total-value">—</div>
           <div id="dash-value-diff" class="stat-sub"></div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Listings</div>
+          <div class="stat-value" id="dash-for-sale-count">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sales Revenue</div>
+          <div class="stat-value green" id="dash-sales-revenue">—</div>
+          <div class="stat-sub" id="dash-sales-profit"></div>
+        </div>
       </div>
 
       <div class="dashboard-grid">
@@ -108,11 +130,11 @@
           <div class="bar-list" id="dash-genres"><p style="color:var(--text-muted);font-size:13px">No data yet</p></div>
         </div>
         <div class="dash-card">
-          <div class="dash-card-title">Hardware by Type</div>
+          <div class="dash-card-title">Systems by Type</div>
           <div class="bar-list" id="dash-hw-types"><p style="color:var(--text-muted);font-size:13px">No data yet</p></div>
         </div>
         <div class="dash-card">
-          <div class="dash-card-title">Hardware by Platform</div>
+          <div class="dash-card-title">Systems by Platform</div>
           <div class="bar-list" id="dash-hw-platforms"><p style="color:var(--text-muted);font-size:13px">No data yet</p></div>
         </div>
       </div>
@@ -178,59 +200,172 @@
       </div>
     </section>
 
-    <!-- ===== HARDWARE PAGE ===== -->
-    <section class="page" id="page-hardware">
+    <!-- ===== SYSTEMS PAGE ===== -->
+    <section class="page" id="page-systems">
       <div class="filters-bar">
-        <select class="filter-select" id="filterHwPlatform"><option value="">All Platforms</option></select>
-        <select class="filter-select" id="filterHwType"><option value="">All Types</option></select>
-        <select class="filter-select" id="filterHwCondition"><option value="">All Conditions</option></select>
+        <select class="filter-select" id="filterSystemsPlatform"><option value="">All Platforms</option></select>
+        <select class="filter-select" id="filterSystemsType"><option value="">All Types</option></select>
+        <select class="filter-select" id="filterSystemsCondition"><option value="">All Conditions</option></select>
         <div class="filters-right">
-          <button class="btn btn-secondary" id="refreshAllHwValues" onclick="HardwarePage.refreshAllValues()">↻ Refresh All Values</button>
+          <button class="btn btn-secondary" id="refreshAllSystemsValues" onclick="SystemsPage.refreshAllValues()">↻ Refresh All Values</button>
         </div>
       </div>
-
-      <input type="text" id="hardwareSearch" style="display:none">
-
-      <!-- Mobile card list -->
-      <div id="hwMobileList" class="games-card-list"></div>
-
+      <input type="text" id="systemsSearch" style="display:none">
+      <div id="systemsMobileList" class="games-card-list"></div>
       <div class="table-wrap">
-        <div class="table-header">
-          <span class="table-count" id="hardwareCount">0 items</span>
-        </div>
-        <!-- Batch action bar -->
-        <div class="batch-bar" id="hwBatchBar">
-          <span class="batch-count" id="hwBatchCount"></span>
+        <div class="table-header"><span class="table-count" id="systemsCount">0 items</span></div>
+        <div class="batch-bar" id="systemsBatchBar">
+          <span class="batch-count" id="systemsBatchCount"></span>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-secondary btn-sm" onclick="HardwarePage.batchEdit()">✎ Edit</button>
-            <button class="btn btn-danger btn-sm"    onclick="HardwarePage.batchDelete()">✕ Delete</button>
-            <button class="btn btn-ghost btn-sm"     onclick="HardwarePage.clearSelection()">Cancel</button>
+            <button class="btn btn-secondary btn-sm" onclick="SystemsPage.batchEdit()">✎ Edit</button>
+            <button class="btn btn-danger btn-sm"    onclick="SystemsPage.batchDelete()">✕ Delete</button>
+            <button class="btn btn-ghost btn-sm"     onclick="SystemsPage.clearSelection()">Cancel</button>
           </div>
         </div>
-
-        <table id="hardwareTable">
-          <thead>
-            <tr>
-              <th style="width:36px"><input type="checkbox" id="hwSelectAll" title="Select all"></th>
-              <th style="width:48px"></th>
-              <th data-sort="name">Name <span class="sort-icon">↕</span></th>
-              <th data-sort="type">Type <span class="sort-icon">↕</span></th>
-              <th data-sort="platform">Platform <span class="sort-icon">↕</span></th>
-              <th data-sort="condition">Condition <span class="sort-icon">↕</span></th>
-              <th data-sort="integrity">Integrity <span class="sort-icon">↕</span></th>
-              <th data-sort="model_number">Model <span class="sort-icon">↕</span></th>
-              <th data-sort="serial_number">Serial <span class="sort-icon">↕</span></th>
-              <th data-sort="jailbroken">Jailbroken <span class="sort-icon">↕</span></th>
-              <th data-sort="region">Region <span class="sort-icon">↕</span></th>
-              <th data-sort="quantity">Qty <span class="sort-icon">↕</span></th>
-              <th data-sort="price_paid">Paid <span class="sort-icon">↕</span></th>
-              <th data-sort="price_value">Value <span class="sort-icon">↕</span></th>
-              <th data-sort="created_at">Added <span class="sort-icon">↕</span></th>
-              <th style="width:100px"></th>
-            </tr>
-          </thead>
-          <tbody id="hardwareTableBody">
+        <table id="systemsTable">
+          <thead><tr>
+            <th style="width:36px"><input type="checkbox" id="systemsSelectAll" title="Select all"></th>
+            <th style="width:48px"></th>
+            <th data-sort="name">Name <span class="sort-icon">↕</span></th>
+            <th data-sort="type">Type <span class="sort-icon">↕</span></th>
+            <th data-sort="platform">Platform <span class="sort-icon">↕</span></th>
+            <th data-sort="condition">Condition <span class="sort-icon">↕</span></th>
+            <th data-sort="integrity">Integrity <span class="sort-icon">↕</span></th>
+            <th data-sort="model_number">Model <span class="sort-icon">↕</span></th>
+            <th data-sort="serial_number">Serial <span class="sort-icon">↕</span></th>
+            <th data-sort="jailbroken">Modded <span class="sort-icon">↕</span></th>
+            <th data-sort="region">Region <span class="sort-icon">↕</span></th>
+            <th data-sort="quantity">Qty <span class="sort-icon">↕</span></th>
+            <th data-sort="price_paid">Paid <span class="sort-icon">↕</span></th>
+            <th data-sort="price_value">Value <span class="sort-icon">↕</span></th>
+            <th data-sort="created_at">Added <span class="sort-icon">↕</span></th>
+            <th style="width:100px"></th>
+          </tr></thead>
+          <tbody id="systemsTableBody">
             <tr><td colspan="16" class="loading"><div class="spinner"></div> Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== CONTROLLERS PAGE ===== -->
+    <section class="page" id="page-controllers">
+      <div class="filters-bar">
+        <select class="filter-select" id="filterControllersPlatform"><option value="">All Platforms</option></select>
+        <select class="filter-select" id="filterControllersType"><option value="">All Types</option></select>
+        <select class="filter-select" id="filterControllersCondition"><option value="">All Conditions</option></select>
+        <div class="filters-right">
+          <button class="btn btn-secondary" id="refreshAllControllersValues" onclick="ControllersPage.refreshAllValues()">↻ Refresh All Values</button>
+        </div>
+      </div>
+      <input type="text" id="controllersSearch" style="display:none">
+      <div id="controllersMobileList" class="games-card-list"></div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-count" id="controllersCount">0 items</span></div>
+        <div class="batch-bar" id="controllersBatchBar">
+          <span class="batch-count" id="controllersBatchCount"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="ControllersPage.batchEdit()">✎ Edit</button>
+            <button class="btn btn-danger btn-sm"    onclick="ControllersPage.batchDelete()">✕ Delete</button>
+            <button class="btn btn-ghost btn-sm"     onclick="ControllersPage.clearSelection()">Cancel</button>
+          </div>
+        </div>
+        <table id="controllersTable">
+          <thead><tr>
+            <th style="width:36px"><input type="checkbox" id="controllersSelectAll" title="Select all"></th>
+            <th style="width:48px"></th>
+            <th data-sort="name">Name <span class="sort-icon">↕</span></th>
+            <th data-sort="type">Type <span class="sort-icon">↕</span></th>
+            <th data-sort="platform">Platform <span class="sort-icon">↕</span></th>
+            <th data-sort="condition">Condition <span class="sort-icon">↕</span></th>
+            <th data-sort="integrity">Integrity <span class="sort-icon">↕</span></th>
+            <th data-sort="model_number">Model <span class="sort-icon">↕</span></th>
+            <th data-sort="serial_number">Serial <span class="sort-icon">↕</span></th>
+            <th data-sort="jailbroken">Modded <span class="sort-icon">↕</span></th>
+            <th data-sort="region">Region <span class="sort-icon">↕</span></th>
+            <th data-sort="quantity">Qty <span class="sort-icon">↕</span></th>
+            <th data-sort="price_paid">Paid <span class="sort-icon">↕</span></th>
+            <th data-sort="price_value">Value <span class="sort-icon">↕</span></th>
+            <th data-sort="created_at">Added <span class="sort-icon">↕</span></th>
+            <th style="width:100px"></th>
+          </tr></thead>
+          <tbody id="controllersTableBody">
+            <tr><td colspan="16" class="loading"><div class="spinner"></div> Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== PERIPHERALS PAGE ===== -->
+    <section class="page" id="page-peripherals">
+      <div class="filters-bar">
+        <select class="filter-select" id="filterPeripheralsPlatform"><option value="">All Platforms</option></select>
+        <select class="filter-select" id="filterPeripheralsType"><option value="">All Types</option></select>
+        <select class="filter-select" id="filterPeripheralsCondition"><option value="">All Conditions</option></select>
+        <div class="filters-right">
+          <button class="btn btn-secondary" id="refreshAllPeripheralsValues" onclick="PeripheralsPage.refreshAllValues()">↻ Refresh All Values</button>
+        </div>
+      </div>
+      <input type="text" id="peripheralsSearch" style="display:none">
+      <div id="peripheralsMobileList" class="games-card-list"></div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-count" id="peripheralsCount">0 items</span></div>
+        <div class="batch-bar" id="peripheralsBatchBar">
+          <span class="batch-count" id="peripheralsBatchCount"></span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="PeripheralsPage.batchEdit()">✎ Edit</button>
+            <button class="btn btn-danger btn-sm"    onclick="PeripheralsPage.batchDelete()">✕ Delete</button>
+            <button class="btn btn-ghost btn-sm"     onclick="PeripheralsPage.clearSelection()">Cancel</button>
+          </div>
+        </div>
+        <table id="peripheralsTable">
+          <thead><tr>
+            <th style="width:36px"><input type="checkbox" id="peripheralsSelectAll" title="Select all"></th>
+            <th style="width:48px"></th>
+            <th data-sort="name">Name <span class="sort-icon">↕</span></th>
+            <th data-sort="type">Type <span class="sort-icon">↕</span></th>
+            <th data-sort="platform">Platform <span class="sort-icon">↕</span></th>
+            <th data-sort="condition">Condition <span class="sort-icon">↕</span></th>
+            <th data-sort="integrity">Integrity <span class="sort-icon">↕</span></th>
+            <th data-sort="model_number">Model <span class="sort-icon">↕</span></th>
+            <th data-sort="serial_number">Serial <span class="sort-icon">↕</span></th>
+            <th data-sort="jailbroken">Modded <span class="sort-icon">↕</span></th>
+            <th data-sort="region">Region <span class="sort-icon">↕</span></th>
+            <th data-sort="quantity">Qty <span class="sort-icon">↕</span></th>
+            <th data-sort="price_paid">Paid <span class="sort-icon">↕</span></th>
+            <th data-sort="price_value">Value <span class="sort-icon">↕</span></th>
+            <th data-sort="created_at">Added <span class="sort-icon">↕</span></th>
+            <th style="width:100px"></th>
+          </tr></thead>
+          <tbody id="peripheralsTableBody">
+            <tr><td colspan="16" class="loading"><div class="spinner"></div> Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== FOR SALE PAGE ===== -->
+    <section class="page" id="page-forsale">
+      <div class="filters-bar">
+        <span class="filter-chip active" data-fs-status="">All</span>
+        <span class="filter-chip" data-fs-status="listed">🏷️ Listed</span>
+        <span class="filter-chip" data-fs-status="sold">✓ Sold</span>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-count" id="forsaleCount">0 listings</span></div>
+        <table id="forsaleTable">
+          <thead><tr>
+            <th data-sort="title">Title <span class="sort-icon">↕</span></th>
+            <th data-sort="status">Status <span class="sort-icon">↕</span></th>
+            <th>Items</th>
+            <th data-sort="asking_price">Asking <span class="sort-icon">↕</span></th>
+            <th data-sort="sold_price">Sold For <span class="sort-icon">↕</span></th>
+            <th data-sort="sold_at">Sold At <span class="sort-icon">↕</span></th>
+            <th data-sort="created_at">Created <span class="sort-icon">↕</span></th>
+            <th style="width:130px"></th>
+          </tr></thead>
+          <tbody id="forsaleTableBody">
+            <tr><td colspan="8" class="loading"><div class="spinner"></div> Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -962,6 +1097,82 @@
   </div>
 </div>
 
+<!-- ===== FOR SALE: CREATE / EDIT LISTING MODAL ===== -->
+<div class="modal-overlay" id="forsaleModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <span class="modal-title" id="forsaleModalTitle">Create Listing</span>
+      <button class="modal-close" data-close-modal="forsaleModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <div class="form-section-title">📋 Listing Details</div>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label">Title *</label>
+            <input type="text" class="form-control" id="fsTitle" placeholder="e.g. PlayStation 2 Bundle, Nintendo 64 Collection">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asking Price</label>
+            <div class="price-input-wrap">
+              <input type="number" class="form-control" id="fsAskingPrice" placeholder="0.00" min="0" step="0.01">
+              <select class="currency-select" id="fsAskingCurrency"></select>
+            </div>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="fsNotes" rows="2" placeholder="Additional notes about this listing..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="form-section" id="fsItemsSection">
+        <div class="form-section-title">📦 Items in Listing</div>
+        <div class="fs-item-search-wrap">
+          <input type="text" class="form-control" id="fsItemSearch" placeholder="Search games or hardware to add…" autocomplete="off">
+          <div class="fs-item-results" id="fsItemResults"></div>
+        </div>
+        <div class="fs-selected-items" id="fsSelectedItems">
+          <p style="color:var(--text-muted);font-size:13px;padding:8px 0">No items added yet. Search above to add items.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="forsaleModal">Cancel</button>
+      <button class="btn btn-primary" id="saveForsaleBtn">Create Listing</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FOR SALE: MARK SOLD MODAL ===== -->
+<div class="modal-overlay" id="sellModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">Mark as Sold</span>
+      <button class="modal-close" data-close-modal="sellModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-listing-title" id="sellModalListingTitle" style="color:var(--text-secondary);font-size:13px;margin-bottom:16px"></p>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label class="form-label">Sold Price</label>
+          <div class="price-input-wrap">
+            <input type="number" class="form-control" id="sellPrice" placeholder="0.00" min="0" step="0.01">
+            <select class="currency-select" id="sellCurrency"></select>
+          </div>
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label">Date Sold</label>
+          <input type="date" class="form-control" id="sellDate">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close-modal="sellModal">Cancel</button>
+      <button class="btn btn-success" id="confirmSellBtn">Mark as Sold</button>
+    </div>
+  </div>
+</div>
+
 <!-- Floating Action Buttons (mobile only) -->
 <button class="fab" id="gameFab" aria-label="Add game">+</button>
 <button class="fab" id="hwFab" aria-label="Add hardware">+</button>
@@ -987,15 +1198,16 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=22"></script>
-<script src="/js/currency.js?v=22"></script>
-<script src="/js/platforms.js?v=22"></script>
-<script src="/js/utils.js?v=22"></script>
-<script src="/js/dashboard.js?v=22"></script>
-<script src="/js/games.js?v=22"></script>
-<script src="/js/hardware.js?v=22"></script>
-<script src="/js/logs.js?v=22"></script>
-<script src="/js/app.js?v=22"></script>
+<script src="/js/api.js?v=24"></script>
+<script src="/js/currency.js?v=24"></script>
+<script src="/js/platforms.js?v=24"></script>
+<script src="/js/utils.js?v=24"></script>
+<script src="/js/dashboard.js?v=24"></script>
+<script src="/js/games.js?v=24"></script>
+<script src="/js/hardware.js?v=24"></script>
+<script src="/js/forsale.js?v=24"></script>
+<script src="/js/logs.js?v=24"></script>
+<script src="/js/app.js?v=24"></script>
 
 </body>
 </html>

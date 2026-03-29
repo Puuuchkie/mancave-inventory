@@ -27,7 +27,7 @@ const API = {
   getHardware: (params = {}) => API.request('GET', '/api/hardware?' + new URLSearchParams(params)),
   getHardwareItem: (id) => API.request('GET', `/api/hardware/${id}`),
   getHardwareStats: () => API.request('GET', '/api/hardware/stats'),
-  getHardwareOptions: () => API.request('GET', '/api/hardware/options'),
+  getHardwareOptions: (params = {}) => API.request('GET', '/api/hardware/options?' + new URLSearchParams(params)),
   createHardware: (data) => API.request('POST', '/api/hardware', data),
   updateHardware: (id, data) => API.request('PUT', `/api/hardware/${id}`, data),
   deleteHardware: (id) => API.request('DELETE', `/api/hardware/${id}`),
@@ -66,6 +66,14 @@ const API = {
   previewHardware:(file)           => API.request('POST', '/api/io/preview/hardware', { file }),
   importGames:    (file, mappings) => API.request('POST', '/api/io/import/games',    { file, mappings }),
   importHardware: (file, mappings) => API.request('POST', '/api/io/import/hardware', { file, mappings }),
+
+  // For Sale
+  getForSaleListings:    ()         => API.request('GET',    '/api/forsale'),
+  getForSaleStats:       ()         => API.request('GET',    '/api/forsale/stats'),
+  createForSaleListing:  (data)     => API.request('POST',   '/api/forsale', data),
+  updateForSaleListing:  (id, data) => API.request('PUT',    `/api/forsale/${id}`, data),
+  markForSaleSold:       (id, data) => API.request('POST',   `/api/forsale/${id}/sell`, data),
+  deleteForSaleListing:  (id)       => API.request('DELETE', `/api/forsale/${id}`),
 
   // Logs
   getLogs:   () => API.request('GET', '/api/logs'),

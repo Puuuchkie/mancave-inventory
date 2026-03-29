@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background: dark navy rounded square -->
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+
+  <!-- Shoulder bumpers -->
+  <rect x="72" y="162" width="112" height="32" rx="16" fill="#4f46e5"/>
+  <rect x="328" y="162" width="112" height="32" rx="16" fill="#4f46e5"/>
+
+  <!-- Controller body -->
+  <rect x="56" y="184" width="400" height="164" rx="52" fill="#4f46e5"/>
+
+  <!-- D-pad vertical -->
+  <rect x="148" y="230" width="24" height="56" rx="6" fill="#1e1b4b"/>
+  <!-- D-pad horizontal -->
+  <rect x="126" y="250" width="68" height="20" rx="6" fill="#1e1b4b"/>
+
+  <!-- Face buttons — diamond layout -->
+  <!-- Top (Y) yellow -->
+  <circle cx="352" cy="227" r="20" fill="#fbbf24"/>
+  <!-- Right (B) red -->
+  <circle cx="384" cy="258" r="20" fill="#f87171"/>
+  <!-- Bottom (A) blue -->
+  <circle cx="352" cy="289" r="20" fill="#60a5fa"/>
+  <!-- Left (X) green -->
+  <circle cx="320" cy="258" r="20" fill="#34d399"/>
+
+  <!-- Select -->
+  <rect x="204" y="248" width="38" height="20" rx="10" fill="#312e81"/>
+  <!-- Start -->
+  <rect x="270" y="248" width="38" height="20" rx="10" fill="#312e81"/>
+
+  <!-- Analog stick hints (small circles) -->
+  <circle cx="162" cy="330" r="22" fill="#3730a3" stroke="#6366f1" stroke-width="3"/>
+  <circle cx="350" cy="330" r="22" fill="#3730a3" stroke="#6366f1" stroke-width="3"/>
+</svg>

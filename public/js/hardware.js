@@ -1,67 +1,62 @@
-// Hardware module
-const HardwarePage = (() => {
-  let allItems = [];
-  let sortKey = 'name';
-  let sortDir = 'asc';
-  let editingId = null;
-  let selectedPCResult = null;
-  let searchTerm = '';
-  let filterPlatform = '';
-  let filterType = '';
-  let filterCondition = '';
-  let selectedIds = new Set();
-  let lastCheckedIdx = -1;
+// Hardware module — factory-based so Systems, Controllers, Peripherals share one implementation
+let _hwCommonInitDone = false;
+let _activeHwPage = null; // which page instance owns the shared modal right now
 
-  const TYPES = ['Console', 'Handheld Console', 'Controller / Gamepad', 'Arcade Stick', 'Light Gun', 'Memory Card', 'Peripheral', 'Cable / Adapter', 'Storage', 'Accessory', 'Other'];
-  const CONDITIONS = ['Factory Sealed', 'Working', 'Partially Working', 'Refurbished', 'Poor', 'For Parts / Repair'];
-  const INTEGRITY = ['Complete In Box', 'Loose', 'No Controllers'];
-  const REGIONS = ['NTSC (USA)', 'NTSC-J (Japan)', 'PAL (Europe)', 'PAL-AU (Australia)', 'Multi-Region', 'Universal'];
+function makeHardwarePage(cfg) {
+  // cfg: { category, tableId, tbodyId, countId, batchBarId, batchCountId,
+  //        selectAllId, mobileListId, searchId, filterPlatformId,
+  //        filterTypeId, filterConditionId, refreshBtnId, emptyIcon, addLabel, badgeId }
+
+  let allItems = [], sortKey = 'name', sortDir = 'asc', editingId = null;
+  let selectedPCResult = null, searchTerm = '', filterPlatform = '', filterType = '';
+  let filterCondition = '', selectedIds = new Set(), lastCheckedIdx = -1;
 
   async function load() {
-    const tbody = document.getElementById('hardwareTableBody');
-    tbody.innerHTML = `<tr><td colspan="9" class="loading"><div class="spinner"></div> Loading...</td></tr>`;
+    const tbody = document.getElementById(cfg.tbodyId);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="16" class="loading"><div class="spinner"></div> Loading...</td></tr>`;
     try {
-      const params = {};
-      if (searchTerm) params.search = searchTerm;
+      const params = { category: cfg.category };
+      if (searchTerm)     params.search = searchTerm;
       if (filterPlatform) params.platform = filterPlatform;
-      if (filterType) params.type = filterType;
+      if (filterType)     params.type = filterType;
       if (filterCondition) params.condition = filterCondition;
 
       allItems = await API.getHardware(params);
       renderTable();
       updateFilterOptions();
-    } catch (e) {
-      toast(e.message, 'error');
-    }
+    } catch (e) { toast(e.message, 'error'); }
   }
 
   async function updateFilterOptions() {
     try {
-      const opts = await API.getHardwareOptions();
-      const platSel = document.getElementById('filterHwPlatform');
-      const typeSel = document.getElementById('filterHwType');
-      const conSel = document.getElementById('filterHwCondition');
-
-      platSel.innerHTML = '<option value="">All Platforms</option>' + opts.platforms.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-      typeSel.innerHTML = '<option value="">All Types</option>' + opts.types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
-      conSel.innerHTML = '<option value="">All Conditions</option>' + opts.conditions.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      const opts = await API.getHardwareOptions({ category: cfg.category });
+      const platSel = document.getElementById(cfg.filterPlatformId);
+      const typeSel = document.getElementById(cfg.filterTypeId);
+      const conSel  = document.getElementById(cfg.filterConditionId);
+      if (platSel) platSel.innerHTML = '<option value="">All Platforms</option>' + opts.platforms.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      if (typeSel)  typeSel.innerHTML  = '<option value="">All Types</option>'    + opts.types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+      if (conSel)   conSel.innerHTML   = '<option value="">All Conditions</option>' + opts.conditions.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
     } catch {}
   }
 
   function renderTable() {
-    const tbody = document.getElementById('hardwareTableBody');
+    const tbody = document.getElementById(cfg.tbodyId);
+    if (!tbody) return;
     const sorted = sortData(allItems, sortKey, sortDir);
-    document.getElementById('hardwareCount').textContent = `${sorted.length} item${sorted.length !== 1 ? 's' : ''}`;
+    const countEl = document.getElementById(cfg.countId);
+    if (countEl) countEl.textContent = `${sorted.length} item${sorted.length !== 1 ? 's' : ''}`;
+
+    // Update sidebar badge
+    const badge = document.getElementById(cfg.badgeId);
+    if (badge) badge.textContent = sorted.length;
 
     if (!sorted.length) {
-      tbody.innerHTML = `
-        <tr><td colspan="16">
-          <div class="empty-state">
-            <div class="empty-icon">🕹️</div>
-            <p>No hardware found. Add your first console or controller!</p>
-            <button class="btn btn-primary" onclick="HardwarePage.openAdd()">+ Add Hardware</button>
-          </div>
-        </td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="16">
+        <div class="empty-state">
+          <div class="empty-icon">${cfg.emptyIcon}</div>
+          <p>No ${cfg.category} found. Add your first item!</p>
+          <button class="btn btn-primary" onclick="${cfg.pageVar}.openAdd()">+ ${cfg.addLabel}</button>
+        </div></td></tr>`;
       updateBatchBar();
       return;
     }
@@ -70,10 +65,10 @@ const HardwarePage = (() => {
 
     tbody.innerHTML = sorted.map(h => {
       const diff = priceDiff(h.price_paid, h.price_value, h.price_paid_currency, h.price_value_currency);
-      const icon = TYPE_ICONS[h.type] || '🕹️';
+      const icon = TYPE_ICONS[h.type] || cfg.emptyIcon;
       const added = h.created_at ? h.created_at.slice(0, 7) : '—';
       const sel = selectedIds.has(h.id);
-      return `<tr class="${sel ? 'row-selected' : ''}" onclick="if(!event.target.closest('.row-check,.row-actions'))HardwarePage.openDetail(${h.id})">
+      return `<tr class="${sel ? 'row-selected' : ''}" onclick="if(!event.target.closest('.row-check,.row-actions'))${cfg.pageVar}.openDetail(${h.id})">
         <td><input type="checkbox" class="row-check" data-id="${h.id}" ${sel ? 'checked' : ''}></td>
         <td class="td-thumb"><div class="row-thumb-placeholder">${icon}</div></td>
         <td>
@@ -89,20 +84,20 @@ const HardwarePage = (() => {
         <td>${h.jailbroken ? '<span style="color:var(--accent);font-weight:600">✓</span>' : '—'}</td>
         <td>${regionBadge(h.region)}</td>
         <td>${h.quantity || 1}</td>
-        <td>${h.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid, h.price_paid_currency)}</span>` : '—'}</td>
+        <td>${h.price_paid  != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid,  h.price_paid_currency)}</span>` : '—'}</td>
         <td>${h.price_value != null ? `<span class="price-value">${Currency.formatWithBase(h.price_value, h.price_value_currency)}</span>${diff ? '<br>' + diff : ''}` : '—'}</td>
         <td style="color:var(--text-muted);font-size:12px">${added}</td>
         <td onclick="event.stopPropagation()">
           <div class="row-actions">
-            <button class="btn btn-ghost btn-sm btn-icon" title="Refresh value" id="hwRefreshBtn-${h.id}" onclick="HardwarePage.refreshValue(${h.id}, '${esc(h.name).replace(/'/g, "\\'")}', '${esc(h.condition || '').replace(/'/g, "\\'")}')">↻</button>
-            <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="HardwarePage.openEdit(${h.id})">✎</button>
-            <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="HardwarePage.deleteItem(${h.id}, '${esc(h.name)}')">✕</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Refresh value" id="hwRefreshBtn-${h.id}" onclick="${cfg.pageVar}.refreshValue(${h.id}, '${esc(h.name).replace(/'/g, "\\'")}', '${esc(h.condition || '').replace(/'/g, "\\'")}')">↻</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Edit"   onclick="${cfg.pageVar}.openEdit(${h.id})">✎</button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="${cfg.pageVar}.deleteItem(${h.id}, '${esc(h.name).replace(/'/g, "\\'")}')">✕</button>
           </div>
         </td>
       </tr>`;
     }).join('');
 
-    document.querySelectorAll('#hardwareTable thead th[data-sort]').forEach(th => {
+    document.querySelectorAll(`#${cfg.tableId} thead th[data-sort]`).forEach(th => {
       th.classList.toggle('sorted', th.dataset.sort === sortKey);
       const icon = th.querySelector('.sort-icon');
       if (icon) icon.textContent = th.dataset.sort === sortKey ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
@@ -113,27 +108,24 @@ const HardwarePage = (() => {
   }
 
   function renderCards() {
-    const list = document.getElementById('hwMobileList');
+    const list = document.getElementById(cfg.mobileListId);
     if (!list) return;
     const sorted = sortData(allItems, sortKey, sortDir);
     const TYPE_ICONS = { 'Console': '🖥️', 'Handheld Console': '📟', 'Controller / Gamepad': '🎮', 'Arcade Stick': '🕹️', 'Light Gun': '🔫', 'Memory Card': '💾', 'Peripheral': '🔌', 'Cable / Adapter': '🔌', 'Storage': '💾', 'Accessory': '🔧' };
     if (!sorted.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-icon">🕹️</div><p>No hardware found. Tap + to add your first item!</p></div>`;
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">${cfg.emptyIcon}</div><p>No ${cfg.category} found. Tap + to add!</p></div>`;
       return;
     }
     list.innerHTML = sorted.map(h => {
-      const icon = TYPE_ICONS[h.type] || '🕹️';
+      const icon = TYPE_ICONS[h.type] || cfg.emptyIcon;
       const priceHtml = (h.price_paid != null || h.price_value != null)
         ? `<div class="game-card-price">
             ${h.price_paid  != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid,  h.price_paid_currency)}</span>` : ''}
             ${h.price_value != null ? `<span class="price-value">${Currency.formatWithBase(h.price_value, h.price_value_currency)}</span>` : ''}
-           </div>`
-        : '';
+           </div>` : '';
       const sub = [h.manufacturer, h.color_variant].filter(Boolean).join(' · ');
-      return `<div class="game-card" onclick="HardwarePage.openDetail(${h.id})">
-        <div class="game-card-cover">
-          <div class="game-card-img-placeholder" style="font-size:26px">${icon}</div>
-        </div>
+      return `<div class="game-card" onclick="${cfg.pageVar}.openDetail(${h.id})">
+        <div class="game-card-cover"><div class="game-card-img-placeholder" style="font-size:26px">${icon}</div></div>
         <div class="game-card-body">
           <div class="game-card-title">${esc(h.name)}</div>
           <div class="game-card-meta">${typeBadge(h.type)}${h.platform ? ' ' + platformBadge(h.platform) : ''}</div>
@@ -146,24 +138,17 @@ const HardwarePage = (() => {
   }
 
   function updateBatchBar() {
-    const bar = document.getElementById('hwBatchBar');
-    const cnt = document.getElementById('hwBatchCount');
+    const bar = document.getElementById(cfg.batchBarId);
+    const cnt = document.getElementById(cfg.batchCountId);
     if (!bar) return;
     if (selectedIds.size > 0) {
       bar.classList.add('visible');
-      cnt.textContent = `${selectedIds.size} selected`;
+      if (cnt) cnt.textContent = `${selectedIds.size} selected`;
     } else {
       bar.classList.remove('visible');
     }
-    const allBox = document.getElementById('hwSelectAll');
+    const allBox = document.getElementById(cfg.selectAllId);
     if (allBox) allBox.checked = selectedIds.size > 0 && selectedIds.size === allItems.length;
-  }
-
-  function toggleSelect(id, checked) {
-    if (checked) selectedIds.add(id); else selectedIds.delete(id);
-    const row = document.querySelector(`#hardwareTable .row-check[data-id="${id}"]`)?.closest('tr');
-    if (row) row.classList.toggle('row-selected', checked);
-    updateBatchBar();
   }
 
   function clearSelection() {
@@ -188,6 +173,7 @@ const HardwarePage = (() => {
     if (!selectedIds.size) return;
     ['batchHwPlatform','batchHwWhere','batchHwDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     ['batchHwType','batchHwCondition','batchHwWorking','batchHwPaidCurrency','batchHwValueCurrency'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    _activeHwPage = inst;
     populateBatchCurrencySelects();
     openModal('hwBatchModal');
   }
@@ -196,9 +182,8 @@ const HardwarePage = (() => {
     ['batchHwPaidCurrency','batchHwValueCurrency'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-      const keep = '<option value="">— Keep existing —</option>';
       Currency.populateSelect(el);
-      el.insertAdjacentHTML('afterbegin', keep);
+      el.insertAdjacentHTML('afterbegin', '<option value="">— Keep existing —</option>');
       el.value = '';
     });
   }
@@ -232,16 +217,20 @@ const HardwarePage = (() => {
   }
 
   function openAdd() {
+    _activeHwPage = inst;
     editingId = null;
     selectedPCResult = null;
-    document.getElementById('hwModalTitle').textContent = 'Add Hardware';
+    document.getElementById('hwModalTitle').textContent = cfg.addLabel;
     document.getElementById('hwForm').reset();
     document.getElementById('hwPcResults').innerHTML = '';
     document.getElementById('hwPcSearch').value = '';
+    Currency.populateSelect(document.getElementById('hwPaidCurrency'));
+    Currency.populateSelect(document.getElementById('hwValueCurrency'));
     openModal('hwModal');
   }
 
   async function openEdit(id) {
+    _activeHwPage = inst;
     editingId = id;
     selectedPCResult = null;
     document.getElementById('hwModalTitle').textContent = 'Edit Hardware';
@@ -358,11 +347,7 @@ const HardwarePage = (() => {
       where_purchased: f.elements.where_purchased.value.trim(),
       remarks: f.elements.remarks.value.trim(),
     };
-
-    if (!data.name || !data.type || !data.platform) {
-      toast('Name, type, and platform are required', 'error'); return;
-    }
-
+    if (!data.name || !data.type || !data.platform) { toast('Name, type, and platform are required', 'error'); return; }
     try {
       if (editingId) await API.updateHardware(editingId, data);
       else await API.createHardware(data);
@@ -396,7 +381,7 @@ const HardwarePage = (() => {
   }
 
   async function refreshAllValues() {
-    const btn = document.getElementById('refreshAllHwValues');
+    const btn = document.getElementById(cfg.refreshBtnId);
     if (btn) { btn.disabled = true; btn.textContent = '↻ Refreshing…'; }
     let updated = 0, failed = 0;
     for (const h of allItems) {
@@ -431,9 +416,7 @@ const HardwarePage = (() => {
         <div style="background:var(--bg-card);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:12px;margin-top:8px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-weight:700;font-size:13px">eBay Sold Listings (${result.count} found)</span>
-            <button class="btn btn-success btn-sm" onclick="HardwarePage.applyEbayPrice(${result.price})">
-              Use $${result.price} →
-            </button>
+            <button class="btn btn-success btn-sm" onclick="${cfg.pageVar}.applyEbayPrice(${result.price})">Use $${result.price} →</button>
           </div>
           <div style="display:flex;gap:16px;font-size:12px;margin-bottom:10px">
             <span>Median: <strong style="color:var(--green)">$${result.price}</strong></span>
@@ -454,62 +437,39 @@ const HardwarePage = (() => {
   }
 
   function init() {
-    document.getElementById('hardwareSearch')?.addEventListener('input', debounce(e => {
+    // Page-specific listeners
+    document.getElementById(cfg.searchId)?.addEventListener('input', debounce(e => {
       searchTerm = e.target.value.trim();
       load();
     }, 300));
+    document.getElementById(cfg.filterPlatformId)?.addEventListener('change', e => { filterPlatform = e.target.value; load(); });
+    document.getElementById(cfg.filterTypeId)?.addEventListener('change', e => { filterType = e.target.value; load(); });
+    document.getElementById(cfg.filterConditionId)?.addEventListener('change', e => { filterCondition = e.target.value; load(); });
 
-    document.getElementById('filterHwPlatform')?.addEventListener('change', e => { filterPlatform = e.target.value; load(); });
-    document.getElementById('filterHwType')?.addEventListener('change', e => { filterType = e.target.value; load(); });
-    document.getElementById('filterHwCondition')?.addEventListener('change', e => { filterCondition = e.target.value; load(); });
-
-    document.querySelectorAll('#hardwareTable thead th[data-sort]').forEach(th => {
+    document.querySelectorAll(`#${cfg.tableId} thead th[data-sort]`).forEach(th => {
       th.addEventListener('click', () => setSort(th.dataset.sort));
     });
 
-    // Currency selects + live conversion preview
-    function wireConversion(inputId, selectId, previewId) {
-      const input = document.getElementById(inputId);
-      const select = document.getElementById(selectId);
-      const preview = document.getElementById(previewId);
-      if (!input || !select || !preview) return;
-      const update = () => {
-        const p = Currency.preview(input.value, select.value);
-        preview.textContent = p ? '≈ ' + p : '';
-      };
-      input.addEventListener('input', update);
-      select.addEventListener('change', update);
-    }
-    wireConversion('hwPricePaid', 'hwPaidCurrency', 'hwPaidConversion');
-    wireConversion('hwPriceValue', 'hwValueCurrency', 'hwValueConversion');
-
-    document.getElementById('hwSelectAll')?.addEventListener('change', function () {
+    document.getElementById(cfg.selectAllId)?.addEventListener('change', function () {
       if (this.checked) allItems.forEach(h => selectedIds.add(h.id));
       else selectedIds.clear();
       lastCheckedIdx = -1;
       renderTable();
     });
 
-    // Checkbox click delegation (supports shift-select)
-    document.getElementById('hardwareTable')?.addEventListener('click', (e) => {
+    document.getElementById(cfg.tableId)?.addEventListener('click', (e) => {
       const cb = e.target.closest('input.row-check');
       if (!cb) return;
       const id = parseInt(cb.dataset.id);
       const sorted = sortData(allItems, sortKey, sortDir);
       const idx = sorted.findIndex(h => h.id === id);
-
       if (e.shiftKey && lastCheckedIdx !== -1 && idx !== -1) {
-        const from = Math.min(lastCheckedIdx, idx);
-        const to = Math.max(lastCheckedIdx, idx);
+        const from = Math.min(lastCheckedIdx, idx), to = Math.max(lastCheckedIdx, idx);
         const shouldCheck = cb.checked;
-        sorted.slice(from, to + 1).forEach(h => {
-          if (shouldCheck) selectedIds.add(h.id);
-          else selectedIds.delete(h.id);
-        });
+        sorted.slice(from, to + 1).forEach(h => { if (shouldCheck) selectedIds.add(h.id); else selectedIds.delete(h.id); });
         renderTable();
       } else {
-        if (cb.checked) selectedIds.add(id);
-        else selectedIds.delete(id);
+        if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
         if (idx !== -1) lastCheckedIdx = idx;
         const row = cb.closest('tr');
         if (row) row.classList.toggle('row-selected', cb.checked);
@@ -517,18 +477,77 @@ const HardwarePage = (() => {
       }
     });
 
-    document.getElementById('saveHwBatchBtn')?.addEventListener('click', saveBatchEdit);
+    // Shared modal setup — runs only once
+    if (!_hwCommonInitDone) {
+      _hwCommonInitDone = true;
 
-    document.getElementById('hwPcSearchBtn')?.addEventListener('click', searchPrices);
-    document.getElementById('hwPcSearch')?.addEventListener('keydown', e => { if (e.key === 'Enter') searchPrices(); });
-    document.getElementById('saveHwBtn')?.addEventListener('click', saveItem);
+      function wireConversion(inputId, selectId, previewId) {
+        const input = document.getElementById(inputId), select = document.getElementById(selectId), preview = document.getElementById(previewId);
+        if (!input || !select || !preview) return;
+        const update = () => { const p = Currency.preview(input.value, select.value); preview.textContent = p ? '≈ ' + p : ''; };
+        input.addEventListener('input', update);
+        select.addEventListener('change', update);
+      }
+      wireConversion('hwPricePaid', 'hwPaidCurrency', 'hwPaidConversion');
+      wireConversion('hwPriceValue', 'hwValueCurrency', 'hwValueConversion');
 
-    document.querySelectorAll('[data-close-modal]').forEach(el => {
-      el.addEventListener('click', () => closeModal(el.dataset.closeModal));
-    });
-    document.getElementById('hwModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwModal'); });
-    document.getElementById('hwDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwDetailModal'); });
+      document.getElementById('saveHwBatchBtn')?.addEventListener('click', () => {
+        if (_activeHwPage) _activeHwPage._saveBatchEdit();
+      });
+      document.getElementById('hwPcSearchBtn')?.addEventListener('click', () => {
+        if (_activeHwPage) _activeHwPage.searchPrices();
+      });
+      document.getElementById('hwPcSearch')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && _activeHwPage) _activeHwPage.searchPrices();
+      });
+      document.getElementById('saveHwBtn')?.addEventListener('click', () => {
+        if (_activeHwPage) _activeHwPage.saveItem();
+      });
+      document.getElementById('hwModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwModal'); });
+      document.getElementById('hwDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwDetailModal'); });
+    }
   }
 
-  return { init, load, openAdd, openEdit, openDetail, deleteItem, searchPrices, applyEbayPrice, refreshValue, refreshAllValues, toggleSelect, clearSelection, batchDelete, batchEdit };
-})();
+  const inst = {
+    init, load, openAdd, openEdit, openDetail, saveItem, deleteItem,
+    searchPrices, applyEbayPrice, refreshValue, refreshAllValues,
+    toggleSelect: (id, checked) => {
+      if (checked) selectedIds.add(id); else selectedIds.delete(id);
+      const row = document.querySelector(`#${cfg.tableId} .row-check[data-id="${id}"]`)?.closest('tr');
+      if (row) row.classList.toggle('row-selected', checked);
+      updateBatchBar();
+    },
+    clearSelection,
+    batchDelete,
+    batchEdit,
+    _saveBatchEdit: saveBatchEdit,
+  };
+  return inst;
+}
+
+const SystemsPage = makeHardwarePage({
+  category: 'systems',     emptyIcon: '🖥️', addLabel: 'Add System',   pageVar: 'SystemsPage',
+  tableId: 'systemsTable',    tbodyId: 'systemsTableBody',    countId: 'systemsCount',
+  batchBarId: 'systemsBatchBar',  batchCountId: 'systemsBatchCount',  selectAllId: 'systemsSelectAll',
+  mobileListId: 'systemsMobileList', searchId: 'systemsSearch',
+  filterPlatformId: 'filterSystemsPlatform', filterTypeId: 'filterSystemsType', filterConditionId: 'filterSystemsCondition',
+  refreshBtnId: 'refreshAllSystemsValues',   badgeId: 'badge-systems',
+});
+
+const ControllersPage = makeHardwarePage({
+  category: 'controllers', emptyIcon: '🕹️', addLabel: 'Add Controller', pageVar: 'ControllersPage',
+  tableId: 'controllersTable', tbodyId: 'controllersTableBody', countId: 'controllersCount',
+  batchBarId: 'controllersBatchBar', batchCountId: 'controllersBatchCount', selectAllId: 'controllersSelectAll',
+  mobileListId: 'controllersMobileList', searchId: 'controllersSearch',
+  filterPlatformId: 'filterControllersPlatform', filterTypeId: 'filterControllersType', filterConditionId: 'filterControllersCondition',
+  refreshBtnId: 'refreshAllControllersValues', badgeId: 'badge-controllers',
+});
+
+const PeripheralsPage = makeHardwarePage({
+  category: 'peripherals', emptyIcon: '🔌', addLabel: 'Add Peripheral', pageVar: 'PeripheralsPage',
+  tableId: 'peripheralsTable', tbodyId: 'peripheralsTableBody', countId: 'peripheralsCount',
+  batchBarId: 'peripheralsBatchBar', batchCountId: 'peripheralsBatchCount', selectAllId: 'peripheralsSelectAll',
+  mobileListId: 'peripheralsMobileList', searchId: 'peripheralsSearch',
+  filterPlatformId: 'filterPeripheralsPlatform', filterTypeId: 'filterPeripheralsType', filterConditionId: 'filterPeripheralsCondition',
+  refreshBtnId: 'refreshAllPeripheralsValues', badgeId: 'badge-peripherals',
+});

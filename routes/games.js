@@ -6,7 +6,7 @@ const { sumInBase } = require('./currencyHelper');
 // GET all games with optional filters
 router.get('/', (req, res) => {
   const { search, platform, condition, genre, finished, unpriced } = req.query;
-  let query = 'SELECT * FROM games WHERE 1=1';
+  let query = 'SELECT * FROM games WHERE (for_sale = 0 OR for_sale IS NULL)';
   const params = [];
 
   if (search) {
@@ -29,7 +29,7 @@ router.get('/', (req, res) => {
 });
 
 // GET stats — single query, aggregate in JS to minimise DB round-trips
-const _statsStmt = db.prepare('SELECT quantity, price_paid, price_paid_currency, price_value, price_value_currency, platform, genre, finished FROM games');
+const _statsStmt = db.prepare('SELECT quantity, price_paid, price_paid_currency, price_value, price_value_currency, platform, genre, finished FROM games WHERE (for_sale = 0 OR for_sale IS NULL)');
 router.get('/stats', (req, res) => {
   const rows = _statsStmt.all();
 

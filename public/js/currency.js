@@ -57,7 +57,7 @@ const Currency = (() => {
     const def = DEFS[c];
     const sym = def?.symbol ?? c + ' ';
     const decimals = (c === 'JPY' || c === 'KRW') ? 0 : 2;
-    return sym + parseFloat(amount).toFixed(decimals);
+    return sym + parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   }
 
   // Show value in its original currency; if different from base also show base equivalent

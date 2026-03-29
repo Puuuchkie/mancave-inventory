@@ -3,10 +3,16 @@ const router = express.Router();
 const db = require('../database');
 const { sumInBase } = require('./currencyHelper');
 
+// Type-category helpers
+const SYSTEM_TYPES     = ['Console', 'Handheld Console'];
+const CONTROLLER_TYPES = ['Controller / Gamepad', 'Arcade Stick', 'Light Gun'];
+const PERIPHERAL_TYPES = ['Memory Card', 'Peripheral', 'Cable / Adapter', 'Storage', 'Accessory', 'Other'];
+const CATEGORY_TYPES   = { systems: SYSTEM_TYPES, controllers: CONTROLLER_TYPES, peripherals: PERIPHERAL_TYPES };
+
 // GET all hardware with optional filters
 router.get('/', (req, res) => {
-  const { search, platform, type, condition, working_condition } = req.query;
-  let query = 'SELECT * FROM hardware WHERE 1=1';
+  const { search, platform, type, condition, working_condition, category, for_sale } = req.query;
+  let query = 'SELECT * FROM hardware WHERE (for_sale = 0 OR for_sale IS NULL)';
   const params = [];
 
   if (search) {
@@ -18,6 +24,15 @@ router.get('/', (req, res) => {
   if (type) { query += ' AND type = ?'; params.push(type); }
   if (condition) { query += ' AND condition = ?'; params.push(condition); }
   if (working_condition) { query += ' AND working_condition = ?'; params.push(working_condition); }
+  if (category && CATEGORY_TYPES[category]) {
+    const placeholders = CATEGORY_TYPES[category].map(() => '?').join(',');
+    query += ` AND type IN (${placeholders})`;
+    params.push(...CATEGORY_TYPES[category]);
+  }
+  if (for_sale === 'true') {
+    // Override: show for_sale items instead
+    query = query.replace('(for_sale = 0 OR for_sale IS NULL)', 'for_sale = 1');
+  }
 
   query += ' ORDER BY platform ASC, type ASC, name ASC';
   const items = db.prepare(query).all(...params);
@@ -25,9 +40,8 @@ router.get('/', (req, res) => {
 });
 
 // GET stats — single query, aggregate in JS to minimise DB round-trips
-const _statsStmt = db.prepare('SELECT quantity, price_paid, price_paid_currency, price_value, price_value_currency, platform, type FROM hardware');
 router.get('/stats', (req, res) => {
-  const rows = _statsStmt.all();
+  const rows = db.prepare('SELECT quantity, price_paid, price_paid_currency, price_value, price_value_currency, platform, type FROM hardware WHERE (for_sale = 0 OR for_sale IS NULL)').all();
 
   let total_qty = 0;
   const paidRows = [], valueRows = [], typeMap = {}, platformMap = {};
@@ -44,6 +58,9 @@ router.get('/stats', (req, res) => {
   const types     = Object.entries(typeMap)    .map(([type, count])     => ({ type, count }))    .sort((a, b) => b.count - a.count);
   const platforms = Object.entries(platformMap).map(([platform, count]) => ({ platform, count })).sort((a, b) => b.count - a.count);
 
+  // Per-category counts for sidebar badges
+  const catCount = (cats) => rows.filter(r => cats.includes(r.type)).length;
+
   res.json({
     total_items: rows.length,
     total_qty,
@@ -51,13 +68,23 @@ router.get('/stats', (req, res) => {
     total_value: sumInBase(valueRows, 'price_value', 'price_value_currency'),
     types,
     platforms,
+    systems_count:     catCount(SYSTEM_TYPES),
+    controllers_count: catCount(CONTROLLER_TYPES),
+    peripherals_count: catCount(PERIPHERAL_TYPES),
   });
 });
 
-// GET filter options — single pass, aggregate in JS
-const _optStmt = db.prepare('SELECT platform, type, condition FROM hardware');
+// GET filter options — single pass, aggregate in JS; supports ?category filter
 router.get('/options', (req, res) => {
-  const rows = _optStmt.all();
+  const { category } = req.query;
+  let query = 'SELECT platform, type, condition FROM hardware WHERE (for_sale = 0 OR for_sale IS NULL)';
+  const params = [];
+  if (category && CATEGORY_TYPES[category]) {
+    const placeholders = CATEGORY_TYPES[category].map(() => '?').join(',');
+    query += ` AND type IN (${placeholders})`;
+    params.push(...CATEGORY_TYPES[category]);
+  }
+  const rows = db.prepare(query).all(...params);
   const pSet = new Set(), tSet = new Set(), cSet = new Set();
   for (const r of rows) {
     if (r.platform)  pSet.add(r.platform);

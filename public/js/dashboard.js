@@ -2,9 +2,10 @@
 const Dashboard = (() => {
   async function load() {
     try {
-      const [gStats, hStats] = await Promise.all([
+      const [gStats, hStats, fsStats] = await Promise.all([
         API.getGameStats(),
         API.getHardwareStats(),
+        API.getForSaleStats(),
       ]);
 
       const totalPaid = (gStats.total_paid || 0) + (hStats.total_paid || 0);
@@ -13,15 +14,35 @@ const Dashboard = (() => {
       document.getElementById('dash-game-titles').textContent = gStats.total_titles.toLocaleString();
       document.getElementById('dash-game-items').textContent = gStats.total_items.toLocaleString();
       document.getElementById('dash-hw-items').textContent = hStats.total_items.toLocaleString();
-
-      // Update sidebar badges — avoids a separate stats fetch
-      const gBadge = document.getElementById('badge-games');
-      const hBadge = document.getElementById('badge-hardware');
-      if (gBadge) gBadge.textContent = gStats.total_titles;
-      if (hBadge) hBadge.textContent = hStats.total_items;
       document.getElementById('dash-finished').textContent = gStats.finished.toLocaleString();
       document.getElementById('dash-total-paid').textContent = Currency.format(totalPaid);
       document.getElementById('dash-total-value').textContent = Currency.format(totalValue);
+
+      // For Sale stats
+      const fsCount = document.getElementById('dash-for-sale-count');
+      if (fsCount) fsCount.textContent = (fsStats.listed_count || 0).toLocaleString();
+      const fsRevEl = document.getElementById('dash-sales-revenue');
+      if (fsRevEl) fsRevEl.textContent = Currency.format(fsStats.revenue || 0);
+      const fsProfEl = document.getElementById('dash-sales-profit');
+      if (fsProfEl) {
+        const profit = fsStats.profit || 0;
+        if (profit > 0) {
+          fsProfEl.textContent = `▲ ${Currency.format(profit)} profit`;
+          fsProfEl.className = 'stat-sub price-gain';
+        } else if (profit < 0) {
+          fsProfEl.textContent = `▼ ${Currency.format(Math.abs(profit))} loss`;
+          fsProfEl.className = 'stat-sub price-loss';
+        } else {
+          fsProfEl.textContent = fsStats.sold_count ? 'Break even' : '—';
+          fsProfEl.className = 'stat-sub';
+        }
+      }
+
+      // Sidebar badges
+      const gBadge = document.getElementById('badge-games');
+      if (gBadge) gBadge.textContent = gStats.total_titles;
+      const fsBadge = document.getElementById('badge-forsale');
+      if (fsBadge) fsBadge.textContent = fsStats.listed_count || 0;
 
       const diff = totalValue - totalPaid;
       const diffEl = document.getElementById('dash-value-diff');

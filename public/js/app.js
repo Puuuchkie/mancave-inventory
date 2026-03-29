@@ -19,11 +19,14 @@ const App = (() => {
 
     // Update topbar title
     const titles = {
-      dashboard: { title: 'Dashboard', sub: 'Collection overview' },
-      games: { title: 'Games', sub: 'Your game library' },
-      hardware: { title: 'Hardware', sub: 'Consoles, controllers & accessories' },
-      settings: { title: 'Settings', sub: 'Configure your inventory' },
-      logs: { title: 'Logs', sub: 'Activity and API request log' },
+      dashboard:   { title: 'Dashboard',   sub: 'Collection overview' },
+      games:       { title: 'Games',       sub: 'Your game library' },
+      systems:     { title: 'Systems',     sub: 'Consoles & handheld systems' },
+      controllers: { title: 'Controllers', sub: 'Gamepads, arcade sticks & light guns' },
+      peripherals: { title: 'Peripherals', sub: 'Memory cards, cables, accessories & more' },
+      forsale:     { title: 'For Sale',    sub: 'Active listings & sales history' },
+      settings:    { title: 'Settings',   sub: 'Configure your inventory' },
+      logs:        { title: 'Logs',        sub: 'Activity and API request log' },
     };
     const info = titles[page] || {};
     document.getElementById('topbarTitle').textContent = info.title || '';
@@ -33,25 +36,25 @@ const App = (() => {
     const searchWrap = document.getElementById('topbarSearchWrap');
     const addBtn = document.getElementById('topbarAddBtn');
     const fab = document.getElementById('gameFab');
-    const isCollection = page === 'games' || page === 'hardware';
-    searchWrap.style.display = isCollection ? '' : 'none';
-    addBtn.style.display = isCollection ? '' : 'none';
-    if (page === 'games')    addBtn.textContent = '+ Add Game';
-    if (page === 'hardware') addBtn.textContent = '+ Add Hardware';
-    if (fab) fab.style.display = page === 'games' ? '' : 'none';
     const hwFab = document.getElementById('hwFab');
-    if (hwFab) hwFab.style.display = page === 'hardware' ? '' : 'none';
+    const hwPages = ['systems', 'controllers', 'peripherals'];
+    const isCollection = page === 'games' || hwPages.includes(page);
+    searchWrap.style.display = isCollection ? '' : 'none';
+    addBtn.style.display = (isCollection || page === 'forsale') ? '' : 'none';
+    if (page === 'games')       addBtn.textContent = '+ Add Game';
+    if (page === 'systems')     addBtn.textContent = '+ Add System';
+    if (page === 'controllers') addBtn.textContent = '+ Add Controller';
+    if (page === 'peripherals') addBtn.textContent = '+ Add Peripheral';
+    if (page === 'forsale')     addBtn.textContent = '+ Create Listing';
+    if (fab) fab.style.display = page === 'games' ? '' : 'none';
+    if (hwFab) hwFab.style.display = hwPages.includes(page) ? '' : 'none';
 
     // Sync search input between topbar and page search
-    if (page === 'games') {
+    const searchPageIds = { games: 'gamesSearch', systems: 'systemsSearch', controllers: 'controllersSearch', peripherals: 'peripheralsSearch' };
+    if (searchPageIds[page]) {
       searchWrap.querySelector('input').oninput = (e) => {
-        const pageSearch = document.getElementById('gamesSearch');
-        if (pageSearch) { pageSearch.value = e.target.value; pageSearch.dispatchEvent(new Event('input')); }
-      };
-    } else if (page === 'hardware') {
-      searchWrap.querySelector('input').oninput = (e) => {
-        const pageSearch = document.getElementById('hardwareSearch');
-        if (pageSearch) { pageSearch.value = e.target.value; pageSearch.dispatchEvent(new Event('input')); }
+        const ps = document.getElementById(searchPageIds[page]);
+        if (ps) { ps.value = e.target.value; ps.dispatchEvent(new Event('input')); }
       };
     }
 
@@ -59,9 +62,12 @@ const App = (() => {
     if (page !== 'logs') LogsPage.stopAutoRefresh();
 
     // Load page data
-    if (page === 'dashboard') Dashboard.load();
-    else if (page === 'games') GamesPage.load();
-    else if (page === 'hardware') HardwarePage.load();
+    if (page === 'dashboard')   Dashboard.load();
+    else if (page === 'games')       GamesPage.load();
+    else if (page === 'systems')     SystemsPage.load();
+    else if (page === 'controllers') ControllersPage.load();
+    else if (page === 'peripherals') PeripheralsPage.load();
+    else if (page === 'forsale')     ForSalePage.load();
     else if (page === 'settings') {
       loadSettings();
       // Load fresh data before rendering so chips are never empty due to a race
@@ -73,11 +79,18 @@ const App = (() => {
 
   async function loadSidebarCounts() {
     try {
-      const [gStats, hStats] = await Promise.all([API.getGameStats(), API.getHardwareStats()]);
+      const [gStats, hStats, fsStats] = await Promise.all([API.getGameStats(), API.getHardwareStats(), API.getForSaleStats()]);
       const gBadge = document.getElementById('badge-games');
-      const hBadge = document.getElementById('badge-hardware');
       if (gBadge) gBadge.textContent = gStats.total_titles;
-      if (hBadge) hBadge.textContent = hStats.total_items;
+      // Hardware category badges updated by each page's renderTable
+      const sBadge = document.getElementById('badge-systems');
+      const cBadge = document.getElementById('badge-controllers');
+      const pBadge = document.getElementById('badge-peripherals');
+      if (sBadge) sBadge.textContent = hStats.systems_count || 0;
+      if (cBadge) cBadge.textContent = hStats.controllers_count || 0;
+      if (pBadge) pBadge.textContent = hStats.peripherals_count || 0;
+      const fsBadge = document.getElementById('badge-forsale');
+      if (fsBadge) fsBadge.textContent = fsStats.listed_count || 0;
     } catch {}
   }
 
@@ -258,11 +271,18 @@ const App = (() => {
     });
 
     document.getElementById('topbarAddBtn')?.addEventListener('click', () => {
-      if (currentPage === 'games') GamesPage.openAdd();
-      else if (currentPage === 'hardware') HardwarePage.openAdd();
+      if (currentPage === 'games')       GamesPage.openAdd();
+      else if (currentPage === 'systems')     SystemsPage.openAdd();
+      else if (currentPage === 'controllers') ControllersPage.openAdd();
+      else if (currentPage === 'peripherals') PeripheralsPage.openAdd();
+      else if (currentPage === 'forsale')     ForSalePage.openCreate();
     });
     document.getElementById('gameFab')?.addEventListener('click', () => GamesPage.openAdd());
-    document.getElementById('hwFab')?.addEventListener('click', () => HardwarePage.openAdd());
+    document.getElementById('hwFab')?.addEventListener('click', () => {
+      if (currentPage === 'systems')     SystemsPage.openAdd();
+      else if (currentPage === 'controllers') ControllersPage.openAdd();
+      else if (currentPage === 'peripherals') PeripheralsPage.openAdd();
+    });
 
     // Settings buttons
     document.getElementById('saveIgdbBtn')?.addEventListener('click', saveIgdbCredentials);
@@ -445,11 +465,14 @@ const App = (() => {
       });
     }
     setupImport('importGamesFile', 'importGamesStatus', API.previewGames,    API.importGames,    GamesPage.load);
-    setupImport('importHwFile',    'importHwStatus',    API.previewHardware, API.importHardware, HardwarePage.load);
+    setupImport('importHwFile',    'importHwStatus',    API.previewHardware, API.importHardware, SystemsPage.load);
 
     initDrawer();
     GamesPage.init();
-    HardwarePage.init();
+    SystemsPage.init();
+    ControllersPage.init();
+    PeripheralsPage.init();
+    ForSalePage.init();
     LogsPage.init();
 
     // Handle browser back/forward
@@ -459,7 +482,7 @@ const App = (() => {
 
     // Determine initial page from URL
     const pathPage = window.location.pathname.replace(/^\//, '') || 'dashboard';
-    const validPages = ['dashboard', 'games', 'hardware', 'settings', 'logs'];
+    const validPages = ['dashboard', 'games', 'systems', 'controllers', 'peripherals', 'forsale', 'settings', 'logs'];
     const initialPage = validPages.includes(pathPage) ? pathPage : 'dashboard';
 
     Platforms.load();
