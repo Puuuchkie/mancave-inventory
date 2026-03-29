@@ -1402,8 +1402,11 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   /* Bottom padding so FAB doesn't cover last card */
   .page.active { padding-bottom: 90px; }
 
-  /* Hardware: hide table, show card list — same as games */
-  #hardwareTable, #page-hardware .table-wrap { display: none; }
+  /* Hardware tabs: hide table, show card list — same as games */
+  #hardwareTable,    #page-hardware    .table-wrap,
+  #systemsTable,     #page-systems     .table-wrap,
+  #controllersTable, #page-controllers .table-wrap,
+  #peripheralsTable, #page-peripherals .table-wrap { display: none; }
 
   /* Modals: full-width bottom sheet */
   .modal-overlay { padding: 0; align-items: flex-end; }
