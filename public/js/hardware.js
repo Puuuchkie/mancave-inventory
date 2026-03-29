@@ -58,6 +58,61 @@ const PLATFORM_DEFAULTS = {
   'Neo Geo':                   { type: 'Console',          manufacturer: 'SNK',       region: 'NTSC (USA)' },
 };
 
+// Known model variants keyed by platform name — populates the Variant datalist
+const PLATFORM_VARIANTS = {
+  // Sony home
+  'PlayStation':               ['Fat (SCPH-1000–7000)', 'PSone (SCPH-100)'],
+  'PAL PlayStation':           ['Fat (SCPH-1000–7000)', 'PSone (SCPH-100)'],
+  'Japan PlayStation':         ['Fat (SCPH-1000–7000)', 'PSone (SCPH-100)'],
+  'PlayStation 2':             ['Fat (SCPH-10000–39004)', 'Slim (SCPH-70000–90006)'],
+  'PAL PlayStation 2':         ['Fat', 'Slim'],
+  'Japan PlayStation 2':       ['Fat', 'Slim'],
+  'PlayStation 3':             ['Fat (CECHA/B)', 'Slim (CECH-2000)', 'Super Slim (CECH-4000)'],
+  'PAL PlayStation 3':         ['Fat', 'Slim', 'Super Slim'],
+  'PlayStation 4':             ['Standard (CUH-1000/1100/1200)', 'Slim (CUH-2000)', 'Pro (CUH-7000)'],
+  'PlayStation 5':             ['Standard', 'Digital Edition', 'Slim', 'Slim Digital'],
+  // Sony handheld
+  'PSP':                       ['1000 (Phat)', '2000 (Slim & Lite)', '3000', 'Go (N1000)', 'Street (E1000)'],
+  'PS Vita':                   ['1000 (Fat)', '2000 (Slim)'],
+  // Microsoft
+  'Xbox':                      ['Original'],
+  'Xbox 360':                  ['Phat (2005)', 'Slim (S)', 'E'],
+  'Xbox One':                  ['Original', 'S', 'X'],
+  'Xbox Series X/S':           ['Series X', 'Series S'],
+  // Nintendo home
+  'NES':                       ['Front-loader (NES-001)', 'Top-loader (NES-101)'],
+  'PAL NES':                   ['Front-loader'],
+  'Famicom':                   ['Original (HVC-001)', 'AV Famicom (HVC-101)'],
+  'SNES':                      ['Original (SNS-001)', '1-CHIP', 'Jr. (SNS-101)'],
+  'PAL SNES':                  ['Original', '1-CHIP'],
+  'Super Famicom':             ['Original (SHVC-001)', '1-CHIP', 'Jr.'],
+  'Nintendo 64':               ['Standard (NUS-001)', 'N64DD'],
+  'PAL Nintendo 64':           ['Standard'],
+  'Japan Nintendo 64':         ['Standard', 'N64DD'],
+  'GameCube':                  ['Standard (DOL-001)', 'Panasonic Q (SL-GC10)'],
+  'PAL GameCube':              ['Standard'],
+  'Wii':                       ['Original (RVL-001)', 'Family Edition (RVL-101)', 'Mini (RVL-201)'],
+  'PAL Wii':                   ['Original', 'Mini'],
+  'Wii U':                     ['Basic (8GB)', 'Deluxe (32GB)'],
+  'Nintendo Switch':           ['Original (HAC-001)', 'Lite (HDH-001)', 'OLED (HEG-001)'],
+  // Nintendo handheld
+  'Game Boy':                  ['Original (DMG-001)', 'Pocket (MGB-001)', 'Light (MGB-101)'],
+  'Game Boy Color':            ['Standard (CGB-001)'],
+  'Game Boy Advance':          ['Original (AGB-001)', 'SP (AGS-001, front-lit)', 'SP (AGS-101, back-lit)', 'Micro (OXY-001)'],
+  'Nintendo DS':               ['Original (NTR-001)', 'DS Lite (USG-001)', 'DSi (TWL-001)', 'DSi XL (UTL-001)'],
+  'Nintendo 3DS':              ['Original (CTR-001)', '3DS XL (SPR-001)', '2DS (FTR-001)', 'New 3DS (KTR-001)', 'New 3DS XL (RED-001)', 'New 2DS XL (JAN-001)'],
+  // Sega
+  'Sega Master System':        ['Model 1', 'Model 2'],
+  'Sega Genesis / Mega Drive': ['Model 1', 'Model 2', 'Model 3 (Majesco)', 'CDX', 'Nomad'],
+  'Sega Saturn':               ['Model 1 (round buttons)', 'Model 2 (oval buttons)'],
+  'Sega Dreamcast':            ['Standard (HKT-3000)'],
+  'Game Gear':                 ['Standard'],
+  // Atari
+  'Atari 2600':                ['Heavy Sixer', 'Light Sixer', '4-Switch (Woodgrain)', '2-Switch (Vader)', 'Jr.'],
+  // Other
+  'Neo Geo':                   ['AES (Home)', 'MVS (Arcade)', 'CD', 'Pocket', 'Pocket Color'],
+};
+
 function makeHardwarePage(cfg) {
   // cfg: { category, types[], tableId, tbodyId, countId, batchBarId, batchCountId,
   //        selectAllId, mobileListId, searchId, filterPlatformId,
@@ -128,7 +183,7 @@ function makeHardwarePage(cfg) {
         <td class="td-thumb"><div class="row-thumb-placeholder">${icon}</div></td>
         <td>
           <div class="td-title">${esc(h.name)}</div>
-          <div class="td-sub">${esc(h.manufacturer || '')}${h.color_variant ? ' · ' + h.color_variant : ''}</div>
+          <div class="td-sub">${esc(h.manufacturer || '')}${h.variant ? ' · ' + esc(h.variant) : ''}${h.color_variant ? ' · ' + esc(h.color_variant) : ''}</div>
         </td>
         <td>${typeBadge(h.type)}</td>
         <td>${platformBadge(h.platform)}</td>
@@ -178,7 +233,7 @@ function makeHardwarePage(cfg) {
             ${h.price_paid  != null ? `<span class="price-paid">${Currency.formatWithBase(h.price_paid,  h.price_paid_currency)}</span>` : ''}
             ${h.price_value != null ? `<span class="price-value">${Currency.formatWithBase(h.price_value, h.price_value_currency)}</span>` : ''}
            </div>` : '';
-      const sub = [h.manufacturer, h.color_variant].filter(Boolean).join(' · ');
+      const sub = [h.manufacturer, h.variant, h.color_variant].filter(Boolean).join(' · ');
       return `<div class="game-card" onclick="${cfg.pageVar}.openDetail(${h.id})">
         <div class="game-card-cover"><div class="game-card-img-placeholder" style="font-size:26px">${icon}</div></div>
         <div class="game-card-body">
@@ -291,6 +346,13 @@ function makeHardwarePage(cfg) {
     if (typeList) typeList.innerHTML = cfg.types.map(t => `<option>${esc(t)}</option>`).join('');
   }
 
+  function _populateVariantList(platform) {
+    const variantList = document.getElementById('hwVariantList');
+    if (!variantList) return;
+    const variants = PLATFORM_VARIANTS[platform] || [];
+    variantList.innerHTML = variants.map(v => `<option>${esc(v)}</option>`).join('');
+  }
+
   function openAdd() {
     _activeHwPage = inst;
     editingId = null;
@@ -332,7 +394,9 @@ function makeHardwarePage(cfg) {
             <div class="detail-field"><span class="detail-field-label">Manufacturer</span><span class="detail-field-value">${esc(h.manufacturer) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Model Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.model_number) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Serial Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.serial_number) || '—'}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Color / Variant</span><span class="detail-field-value">${esc(h.color_variant) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Variant</span><span class="detail-field-value">${esc(h.variant) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Color</span><span class="detail-field-value">${esc(h.color_variant) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Edition</span><span class="detail-field-value">${esc(h.edition) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Region</span><span class="detail-field-value">${esc(h.region) || '—'}</span></div>
           </div>
         </div>
@@ -381,6 +445,7 @@ function makeHardwarePage(cfg) {
     set('condition', h.condition);
     set('integrity', h.integrity);
     set('color_variant', h.color_variant);
+    set('edition', h.edition);
     set('region', h.region);
     set('quantity', h.quantity);
     set('serial_number', h.serial_number);
@@ -405,6 +470,10 @@ function makeHardwarePage(cfg) {
       }
     }
 
+    // Populate variant datalist for the current platform, then set value
+    _populateVariantList(h.platform);
+    set('variant', h.variant);
+
     _suppressHwAutofill = false;
   }
 
@@ -419,6 +488,8 @@ function makeHardwarePage(cfg) {
       condition:           f.elements.condition.value,
       integrity:           f.elements.integrity.value || null,
       color_variant:       f.elements.color_variant.value.trim(),
+      variant:             f.elements.variant?.value.trim() || null,
+      edition:             f.elements.edition?.value.trim() || null,
       region:              f.elements.region.value.trim(),
       quantity:            parseInt(f.elements.quantity.value) || 1,
       serial_number:       f.elements.serial_number.value.trim(),
@@ -544,11 +615,16 @@ function makeHardwarePage(cfg) {
       document.getElementById('hwModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwModal'); });
       document.getElementById('hwDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwDetailModal'); });
 
-      // Platform autofill — only active when Systems page is open
+      // Platform change — populate variant datalist and autofill for Systems page
       document.getElementById('hwPlatformSelect')?.addEventListener('change', e => {
         if (_suppressHwAutofill) return;
-        if (!_activeHwPage || _activeHwPage.cfg.category !== 'systems') return;
         const platform = e.target.value;
+
+        // Always populate the variant datalist for the selected platform
+        if (_activeHwPage) _activeHwPage._populateVariantList(platform);
+
+        // Autofill type/manufacturer/region/name — only for Systems page
+        if (!_activeHwPage || _activeHwPage.cfg.category !== 'systems') return;
         const defaults = PLATFORM_DEFAULTS[platform];
         if (!defaults) return;
         const f = document.getElementById('hwForm');
@@ -572,6 +648,7 @@ function makeHardwarePage(cfg) {
     cfg,
     init, load, openAdd, openEdit, openDetail, saveItem, deleteItem,
     refreshValue, refreshAllValues,
+    _populateVariantList,
     toggleSelect: (id, checked) => {
       if (checked) selectedIds.add(id); else selectedIds.delete(id);
       const row = document.querySelector(`#${cfg.tableId} .row-check[data-id="${id}"]`)?.closest('tr');

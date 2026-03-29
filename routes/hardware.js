@@ -109,7 +109,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const {
     name, type, platform, manufacturer, model_number, condition,
-    color_variant, region, quantity, serial_number, has_original_box,
+    color_variant, variant, edition, region, quantity, serial_number, has_original_box,
     has_all_accessories, working_condition, modifications, integrity, jailbroken,
     price_paid, price_paid_currency, price_value, price_value_currency,
     pricecharting_id, date_acquired, where_purchased, remarks
@@ -120,14 +120,14 @@ router.post('/', (req, res) => {
   const result = db.prepare(`
     INSERT INTO hardware (
       name, type, platform, manufacturer, model_number, condition,
-      color_variant, region, quantity, serial_number, has_original_box,
+      color_variant, variant, edition, region, quantity, serial_number, has_original_box,
       has_all_accessories, working_condition, modifications, integrity, jailbroken,
       price_paid, price_paid_currency, price_value, price_value_currency,
       pricecharting_id, date_acquired, where_purchased, remarks
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name, type, platform, manufacturer, model_number, condition,
-    color_variant, region, quantity || 1, serial_number,
+    color_variant, variant, edition, region, quantity || 1, serial_number,
     has_original_box ? 1 : 0, has_all_accessories ? 1 : 0,
     working_condition || null, modifications,
     integrity || null, jailbroken ? 1 : 0,
@@ -146,7 +146,7 @@ router.put('/:id', (req, res) => {
 
   const {
     name, type, platform, manufacturer, model_number, condition,
-    color_variant, region, quantity, serial_number, has_original_box,
+    color_variant, variant, edition, region, quantity, serial_number, has_original_box,
     has_all_accessories, working_condition, modifications, integrity, jailbroken,
     price_paid, price_paid_currency, price_value, price_value_currency,
     pricecharting_id, date_acquired, where_purchased, remarks
@@ -155,7 +155,7 @@ router.put('/:id', (req, res) => {
   db.prepare(`
     UPDATE hardware SET
       name = ?, type = ?, platform = ?, manufacturer = ?, model_number = ?,
-      condition = ?, color_variant = ?, region = ?, quantity = ?,
+      condition = ?, color_variant = ?, variant = ?, edition = ?, region = ?, quantity = ?,
       serial_number = ?, has_original_box = ?, has_all_accessories = ?,
       working_condition = ?, modifications = ?, integrity = ?, jailbroken = ?,
       price_paid = ?, price_paid_currency = ?,
@@ -165,7 +165,7 @@ router.put('/:id', (req, res) => {
     WHERE id = ?
   `).run(
     name ?? item.name, type ?? item.type, platform ?? item.platform,
-    manufacturer, model_number, condition, color_variant, region,
+    manufacturer, model_number, condition, color_variant, variant, edition, region,
     quantity ?? item.quantity, serial_number,
     has_original_box ? 1 : 0, has_all_accessories ? 1 : 0,
     working_condition || null, modifications,

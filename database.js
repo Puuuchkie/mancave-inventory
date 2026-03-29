@@ -114,6 +114,8 @@ function migrate() {
   add('hardware', 'jailbroken',           'INTEGER DEFAULT 0');
   add('games',    'for_sale',             'INTEGER DEFAULT 0');
   add('hardware', 'for_sale',             'INTEGER DEFAULT 0');
+  add('hardware', 'variant',              'TEXT');
+  add('hardware', 'edition',              'TEXT');
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_games_title    ON games(title);
