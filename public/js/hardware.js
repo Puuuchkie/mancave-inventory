@@ -1,14 +1,14 @@
 // Hardware module — factory-based so Systems, Controllers, Peripherals share one implementation
 let _hwCommonInitDone = false;
-let _activeHwPage = null; // which page instance owns the shared modal right now
+let _activeHwPage = null; // which page instance owns the shared modal
 
 function makeHardwarePage(cfg) {
-  // cfg: { category, tableId, tbodyId, countId, batchBarId, batchCountId,
+  // cfg: { category, types[], tableId, tbodyId, countId, batchBarId, batchCountId,
   //        selectAllId, mobileListId, searchId, filterPlatformId,
-  //        filterTypeId, filterConditionId, refreshBtnId, emptyIcon, addLabel, badgeId }
+  //        filterTypeId, filterConditionId, refreshBtnId, emptyIcon, addLabel, pageVar, badgeId }
 
   let allItems = [], sortKey = 'name', sortDir = 'asc', editingId = null;
-  let selectedPCResult = null, searchTerm = '', filterPlatform = '', filterType = '';
+  let searchTerm = '', filterPlatform = '', filterType = '';
   let filterCondition = '', selectedIds = new Set(), lastCheckedIdx = -1;
 
   async function load() {
@@ -16,9 +16,9 @@ function makeHardwarePage(cfg) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="16" class="loading"><div class="spinner"></div> Loading...</td></tr>`;
     try {
       const params = { category: cfg.category };
-      if (searchTerm)     params.search = searchTerm;
-      if (filterPlatform) params.platform = filterPlatform;
-      if (filterType)     params.type = filterType;
+      if (searchTerm)      params.search    = searchTerm;
+      if (filterPlatform)  params.platform  = filterPlatform;
+      if (filterType)      params.type      = filterType;
       if (filterCondition) params.condition = filterCondition;
 
       allItems = await API.getHardware(params);
@@ -46,7 +46,6 @@ function makeHardwarePage(cfg) {
     const countEl = document.getElementById(cfg.countId);
     if (countEl) countEl.textContent = `${sorted.length} item${sorted.length !== 1 ? 's' : ''}`;
 
-    // Update sidebar badge
     const badge = document.getElementById(cfg.badgeId);
     if (badge) badge.textContent = sorted.length;
 
@@ -216,14 +215,17 @@ function makeHardwarePage(cfg) {
     renderTable();
   }
 
+  function _populateTypeList() {
+    const typeList = document.getElementById('hwTypeList');
+    if (typeList) typeList.innerHTML = cfg.types.map(t => `<option>${esc(t)}</option>`).join('');
+  }
+
   function openAdd() {
     _activeHwPage = inst;
     editingId = null;
-    selectedPCResult = null;
     document.getElementById('hwModalTitle').textContent = cfg.addLabel;
     document.getElementById('hwForm').reset();
-    document.getElementById('hwPcResults').innerHTML = '';
-    document.getElementById('hwPcSearch').value = '';
+    _populateTypeList();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
     openModal('hwModal');
@@ -232,9 +234,8 @@ function makeHardwarePage(cfg) {
   async function openEdit(id) {
     _activeHwPage = inst;
     editingId = id;
-    selectedPCResult = null;
-    document.getElementById('hwModalTitle').textContent = 'Edit Hardware';
-    document.getElementById('hwPcResults').innerHTML = '';
+    document.getElementById('hwModalTitle').textContent = 'Edit';
+    _populateTypeList();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
     try {
@@ -259,19 +260,15 @@ function makeHardwarePage(cfg) {
             <div class="detail-field"><span class="detail-field-label">Model Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.model_number) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Serial Number</span><span class="detail-field-value" style="font-family:monospace">${esc(h.serial_number) || '—'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Color / Variant</span><span class="detail-field-value">${esc(h.color_variant) || '—'}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Region</span><span class="detail-field-value">${regionBadge(h.region)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Region</span><span class="detail-field-value">${esc(h.region) || '—'}</span></div>
           </div>
         </div>
         <div class="form-section">
-          <div class="form-section-title">📦 Condition & Completeness</div>
+          <div class="form-section-title">📦 Condition</div>
           <div class="detail-grid">
             <div class="detail-field"><span class="detail-field-label">Condition</span><span class="detail-field-value">${conditionBadge(h.condition)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Integrity</span><span class="detail-field-value">${esc(h.integrity) || '—'}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Has Original Box</span><span class="detail-field-value">${checkmark(h.has_original_box)}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Has All Accessories</span><span class="detail-field-value">${checkmark(h.has_all_accessories)}</span></div>
-            <div class="detail-field"><span class="detail-field-label">Jailbroken / Modded</span><span class="detail-field-value">${h.jailbroken ? '<span style="color:var(--accent);font-weight:600">Yes</span>' : 'No'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Quantity</span><span class="detail-field-value">${h.quantity}</span></div>
-            ${h.modifications ? `<div class="detail-field span-2"><span class="detail-field-label">Modifications</span><span class="detail-field-value">${esc(h.modifications)}</span></div>` : ''}
           </div>
         </div>
         <div class="form-section">
@@ -286,6 +283,9 @@ function makeHardwarePage(cfg) {
           <div class="detail-grid">
             <div class="detail-field"><span class="detail-field-label">Date Acquired</span><span class="detail-field-value">${fmtDate(h.date_acquired)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Where Purchased</span><span class="detail-field-value">${esc(h.where_purchased) || '—'}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Has Original Box</span><span class="detail-field-value">${checkmark(h.has_original_box)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Has All Accessories</span><span class="detail-field-value">${checkmark(h.has_all_accessories)}</span></div>
+            <div class="detail-field"><span class="detail-field-label">Jailbroken / Modded</span><span class="detail-field-value">${h.jailbroken ? '<span style="color:var(--accent);font-weight:600">Yes</span>' : 'No'}</span></div>
           </div>
         </div>
         ${h.remarks ? `<div class="form-section"><div class="form-section-title">📝 Remarks</div><p style="color:var(--text-secondary);line-height:1.6">${esc(h.remarks)}</p></div>` : ''}
@@ -299,55 +299,70 @@ function makeHardwarePage(cfg) {
     const f = document.getElementById('hwForm');
     const set = (name, val) => { const el = f.elements[name]; if (el) el.value = val ?? ''; };
     const setCheck = (name, val) => { const el = f.elements[name]; if (el) el.checked = bool(val); };
-    set('name', h.name); set('type', h.type); set('platform', h.platform);
-    set('manufacturer', h.manufacturer); set('model_number', h.model_number);
-    set('condition', h.condition); set('integrity', h.integrity);
+
+    set('name', h.name);
+    set('type', h.type);
+    set('manufacturer', h.manufacturer);
+    set('model_number', h.model_number);
+    set('condition', h.condition);
+    set('integrity', h.integrity);
     set('color_variant', h.color_variant);
-    set('region', h.region); set('quantity', h.quantity);
+    set('region', h.region);
+    set('quantity', h.quantity);
     set('serial_number', h.serial_number);
-    set('modifications', h.modifications);
     setCheck('has_original_box', h.has_original_box);
     setCheck('has_all_accessories', h.has_all_accessories);
     setCheck('jailbroken', h.jailbroken);
-    set('price_paid', h.price_paid); set('price_value', h.price_value);
+    set('price_paid', h.price_paid);
+    set('price_value', h.price_value);
     Currency.populateSelect(document.getElementById('hwPaidCurrency'), h.price_paid_currency);
     Currency.populateSelect(document.getElementById('hwValueCurrency'), h.price_value_currency);
-    set('date_acquired', h.date_acquired); set('where_purchased', h.where_purchased);
+    set('date_acquired', h.date_acquired);
+    set('where_purchased', h.where_purchased);
     set('remarks', h.remarks);
-    if (h.pricecharting_id) {
-      selectedPCResult = { id: h.pricecharting_id };
-      document.getElementById('hwPcSearch').value = h.name;
+
+    // Platform is a select with optgroups — try to set, add dynamically if not in list
+    const platSel = document.getElementById('hwPlatformSelect');
+    if (platSel && h.platform) {
+      platSel.value = h.platform;
+      if (platSel.value !== h.platform) {
+        // Value not in predefined options — add it
+        const opt = new Option(h.platform, h.platform, true, true);
+        platSel.add(opt);
+      }
     }
   }
 
   async function saveItem() {
     const f = document.getElementById('hwForm');
     const data = {
-      name: f.elements.name.value.trim(),
-      type: f.elements.type.value,
-      platform: f.elements.platform.value.trim(),
-      manufacturer: f.elements.manufacturer.value.trim(),
-      model_number: f.elements.model_number.value.trim(),
-      condition: f.elements.condition.value,
-      integrity: f.elements.integrity.value || null,
-      color_variant: f.elements.color_variant.value.trim(),
-      region: f.elements.region.value,
-      quantity: parseInt(f.elements.quantity.value) || 1,
-      serial_number: f.elements.serial_number.value.trim(),
-      has_original_box: f.elements.has_original_box.checked,
+      name:                f.elements.name.value.trim(),
+      type:                f.elements.type.value.trim(),
+      platform:            f.elements.platform.value,
+      manufacturer:        f.elements.manufacturer.value.trim(),
+      model_number:        f.elements.model_number.value.trim(),
+      condition:           f.elements.condition.value,
+      integrity:           f.elements.integrity.value || null,
+      color_variant:       f.elements.color_variant.value.trim(),
+      region:              f.elements.region.value.trim(),
+      quantity:            parseInt(f.elements.quantity.value) || 1,
+      serial_number:       f.elements.serial_number.value.trim(),
+      has_original_box:    f.elements.has_original_box.checked,
       has_all_accessories: f.elements.has_all_accessories.checked,
-      jailbroken: f.elements.jailbroken.checked,
-      modifications: f.elements.modifications.value.trim(),
-      price_paid: parseFloat(f.elements.price_paid.value) || null,
+      jailbroken:          f.elements.jailbroken.checked,
+      price_paid:          parseFloat(f.elements.price_paid.value) || null,
       price_paid_currency: f.elements.price_paid_currency?.value || Currency.settings().base,
-      price_value: parseFloat(f.elements.price_value.value) || null,
+      price_value:         parseFloat(f.elements.price_value.value) || null,
       price_value_currency: f.elements.price_value_currency?.value || Currency.settings().base,
-      pricecharting_id: null,
-      date_acquired: f.elements.date_acquired.value || null,
-      where_purchased: f.elements.where_purchased.value.trim(),
-      remarks: f.elements.remarks.value.trim(),
+      date_acquired:       f.elements.date_acquired.value || null,
+      where_purchased:     f.elements.where_purchased.value.trim(),
+      remarks:             f.elements.remarks.value.trim(),
     };
-    if (!data.name || !data.type || !data.platform) { toast('Name, type, and platform are required', 'error'); return; }
+
+    if (!data.name || !data.type || !data.platform) {
+      toast('Name, type, and platform are required', 'error'); return;
+    }
+
     try {
       if (editingId) await API.updateHardware(editingId, data);
       else await API.createHardware(data);
@@ -395,56 +410,14 @@ function makeHardwarePage(cfg) {
     load();
   }
 
-  async function searchPrices() {
-    const q = document.getElementById('hwPcSearch').value.trim();
-    if (!q) return;
-    const resultsEl = document.getElementById('hwPcResults');
-    resultsEl.innerHTML = `<div class="loading"><div class="spinner"></div> Searching eBay sold listings...</div>`;
-    try {
-      const result = await API.searchPrices(q, 'hardware');
-      if (result.price === null) {
-        resultsEl.innerHTML = '<p style="color:var(--text-muted);padding:8px;font-size:13px">No sold listings found. Try a different search term.</p>';
-        return;
-      }
-      const recentItems = (result.items || []).slice(0, 5).map(i =>
-        `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">${esc(i.title)}</span>
-          <span style="color:var(--green);font-weight:700;white-space:nowrap">$${i.price?.toFixed(2)}</span>
-        </div>`
-      ).join('');
-      resultsEl.innerHTML = `
-        <div style="background:var(--bg-card);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:12px;margin-top:8px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-weight:700;font-size:13px">eBay Sold Listings (${result.count} found)</span>
-            <button class="btn btn-success btn-sm" onclick="${cfg.pageVar}.applyEbayPrice(${result.price})">Use $${result.price} →</button>
-          </div>
-          <div style="display:flex;gap:16px;font-size:12px;margin-bottom:10px">
-            <span>Median: <strong style="color:var(--green)">$${result.price}</strong></span>
-            <span>Avg: <strong>$${result.avg}</strong></span>
-            <span>Low: <strong>$${result.low}</strong></span>
-            <span>High: <strong>$${result.high}</strong></span>
-          </div>
-          <div>${recentItems}</div>
-        </div>`;
-    } catch (e) {
-      resultsEl.innerHTML = `<p style="color:var(--red);padding:8px;font-size:13px">${esc(e.message)}</p>`;
-    }
-  }
-
-  function applyEbayPrice(price) {
-    document.getElementById('hwForm').elements.price_value.value = price;
-    toast(`Market value set to $${price}`, 'success');
-  }
-
   function init() {
-    // Page-specific listeners
     document.getElementById(cfg.searchId)?.addEventListener('input', debounce(e => {
       searchTerm = e.target.value.trim();
       load();
     }, 300));
-    document.getElementById(cfg.filterPlatformId)?.addEventListener('change', e => { filterPlatform = e.target.value; load(); });
-    document.getElementById(cfg.filterTypeId)?.addEventListener('change', e => { filterType = e.target.value; load(); });
-    document.getElementById(cfg.filterConditionId)?.addEventListener('change', e => { filterCondition = e.target.value; load(); });
+    document.getElementById(cfg.filterPlatformId)?.addEventListener('change',  e => { filterPlatform  = e.target.value; load(); });
+    document.getElementById(cfg.filterTypeId)?.addEventListener('change',       e => { filterType      = e.target.value; load(); });
+    document.getElementById(cfg.filterConditionId)?.addEventListener('change',  e => { filterCondition = e.target.value; load(); });
 
     document.querySelectorAll(`#${cfg.tableId} thead th[data-sort]`).forEach(th => {
       th.addEventListener('click', () => setSort(th.dataset.sort));
@@ -477,7 +450,7 @@ function makeHardwarePage(cfg) {
       }
     });
 
-    // Shared modal setup — runs only once
+    // Shared modal wiring — runs only once across all three page instances
     if (!_hwCommonInitDone) {
       _hwCommonInitDone = true;
 
@@ -491,18 +464,8 @@ function makeHardwarePage(cfg) {
       wireConversion('hwPricePaid', 'hwPaidCurrency', 'hwPaidConversion');
       wireConversion('hwPriceValue', 'hwValueCurrency', 'hwValueConversion');
 
-      document.getElementById('saveHwBatchBtn')?.addEventListener('click', () => {
-        if (_activeHwPage) _activeHwPage._saveBatchEdit();
-      });
-      document.getElementById('hwPcSearchBtn')?.addEventListener('click', () => {
-        if (_activeHwPage) _activeHwPage.searchPrices();
-      });
-      document.getElementById('hwPcSearch')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && _activeHwPage) _activeHwPage.searchPrices();
-      });
-      document.getElementById('saveHwBtn')?.addEventListener('click', () => {
-        if (_activeHwPage) _activeHwPage.saveItem();
-      });
+      document.getElementById('saveHwBatchBtn')?.addEventListener('click', () => { if (_activeHwPage) _activeHwPage._saveBatchEdit(); });
+      document.getElementById('saveHwBtn')?.addEventListener('click', () => { if (_activeHwPage) _activeHwPage.saveItem(); });
       document.getElementById('hwModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwModal'); });
       document.getElementById('hwDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwDetailModal'); });
     }
@@ -510,7 +473,7 @@ function makeHardwarePage(cfg) {
 
   const inst = {
     init, load, openAdd, openEdit, openDetail, saveItem, deleteItem,
-    searchPrices, applyEbayPrice, refreshValue, refreshAllValues,
+    refreshValue, refreshAllValues,
     toggleSelect: (id, checked) => {
       if (checked) selectedIds.add(id); else selectedIds.delete(id);
       const row = document.querySelector(`#${cfg.tableId} .row-check[data-id="${id}"]`)?.closest('tr');
@@ -526,16 +489,18 @@ function makeHardwarePage(cfg) {
 }
 
 const SystemsPage = makeHardwarePage({
-  category: 'systems',     emptyIcon: '🖥️', addLabel: 'Add System',   pageVar: 'SystemsPage',
-  tableId: 'systemsTable',    tbodyId: 'systemsTableBody',    countId: 'systemsCount',
-  batchBarId: 'systemsBatchBar',  batchCountId: 'systemsBatchCount',  selectAllId: 'systemsSelectAll',
-  mobileListId: 'systemsMobileList', searchId: 'systemsSearch',
+  category: 'systems',     types: ['Console', 'Handheld Console'],
+  emptyIcon: '🖥️', addLabel: 'Add System',     pageVar: 'SystemsPage',
+  tableId: 'systemsTable',     tbodyId: 'systemsTableBody',     countId: 'systemsCount',
+  batchBarId: 'systemsBatchBar',   batchCountId: 'systemsBatchCount',   selectAllId: 'systemsSelectAll',
+  mobileListId: 'systemsMobileList',  searchId: 'systemsSearch',
   filterPlatformId: 'filterSystemsPlatform', filterTypeId: 'filterSystemsType', filterConditionId: 'filterSystemsCondition',
   refreshBtnId: 'refreshAllSystemsValues',   badgeId: 'badge-systems',
 });
 
 const ControllersPage = makeHardwarePage({
-  category: 'controllers', emptyIcon: '🕹️', addLabel: 'Add Controller', pageVar: 'ControllersPage',
+  category: 'controllers', types: ['Controller / Gamepad', 'Arcade Stick', 'Light Gun'],
+  emptyIcon: '🕹️', addLabel: 'Add Controller', pageVar: 'ControllersPage',
   tableId: 'controllersTable', tbodyId: 'controllersTableBody', countId: 'controllersCount',
   batchBarId: 'controllersBatchBar', batchCountId: 'controllersBatchCount', selectAllId: 'controllersSelectAll',
   mobileListId: 'controllersMobileList', searchId: 'controllersSearch',
@@ -544,7 +509,8 @@ const ControllersPage = makeHardwarePage({
 });
 
 const PeripheralsPage = makeHardwarePage({
-  category: 'peripherals', emptyIcon: '🔌', addLabel: 'Add Peripheral', pageVar: 'PeripheralsPage',
+  category: 'peripherals', types: ['Memory Card', 'Peripheral', 'Cable / Adapter', 'Storage', 'Accessory', 'Other'],
+  emptyIcon: '🔌', addLabel: 'Add Peripheral', pageVar: 'PeripheralsPage',
   tableId: 'peripheralsTable', tbodyId: 'peripheralsTableBody', countId: 'peripheralsCount',
   batchBarId: 'peripheralsBatchBar', batchCountId: 'peripheralsBatchCount', selectAllId: 'peripheralsSelectAll',
   mobileListId: 'peripheralsMobileList', searchId: 'peripheralsSearch',

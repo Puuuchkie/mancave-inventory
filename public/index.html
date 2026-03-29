@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Man Cave Inventory</title>
   <link rel="icon" type="image/svg+xml" href="/images/logo.svg">
-  <link rel="stylesheet" href="/css/style.css?v=23">
+  <link rel="stylesheet" href="/css/style.css?v=25">
 </head>
 <body>
 <div class="app-layout">
@@ -747,16 +747,6 @@
     <div class="modal-body">
       <form id="hwForm" onsubmit="return false">
 
-        <!-- Price Lookup -->
-        <div class="price-lookup-wrap">
-          <div class="price-lookup-title">🔍 eBay Price Lookup <span style="font-weight:400;color:var(--text-muted)">(sold listings median)</span></div>
-          <div class="price-lookup-row">
-            <input type="text" class="form-control" id="hwPcSearch" placeholder="e.g. PlayStation 2 console, DualShock 3">
-            <button type="button" class="btn btn-secondary" id="hwPcSearchBtn">Search</button>
-          </div>
-          <div class="price-results" id="hwPcResults"></div>
-        </div>
-
         <div class="form-section">
           <div class="form-section-title">🕹️ Hardware Info</div>
           <div class="form-grid">
@@ -766,42 +756,76 @@
             </div>
             <div class="form-group">
               <label class="form-label">Type *</label>
-              <select class="form-control" name="type">
-                <option value="">— Select type —</option>
-                <option>Console</option>
-                <option>Handheld Console</option>
-                <option>Controller / Gamepad</option>
-                <option>Arcade Stick</option>
-                <option>Light Gun</option>
-                <option>Memory Card</option>
-                <option>Peripheral</option>
-                <option>Cable / Adapter</option>
-                <option>Storage</option>
-                <option>Accessory</option>
-                <option>Other</option>
-              </select>
+              <input type="text" class="form-control" name="type" id="hwType" list="hwTypeList" placeholder="Type…" autocomplete="off">
+              <datalist id="hwTypeList"></datalist>
             </div>
             <div class="form-group">
               <label class="form-label">Platform / System *</label>
-              <input type="text" class="form-control" name="platform" list="hwPlatformList" placeholder="e.g. PlayStation 2, Nintendo 64">
-              <datalist id="hwPlatformList">
-                <option>NES</option><option>SNES</option><option>Nintendo 64</option>
-                <option>GameCube</option><option>Wii</option><option>Wii U</option>
-                <option>Nintendo Switch</option><option>Game Boy</option>
-                <option>Game Boy Color</option><option>Game Boy Advance</option>
-                <option>Nintendo DS</option><option>Nintendo 3DS</option>
-                <option>PlayStation</option><option>PlayStation 2</option>
-                <option>PlayStation 3</option><option>PlayStation 4</option>
-                <option>PlayStation 5</option><option>PSP</option><option>PS Vita</option>
-                <option>Sega Master System</option><option>Sega Genesis / Mega Drive</option>
-                <option>Sega Saturn</option><option>Sega Dreamcast</option>
-                <option>Xbox</option><option>Xbox 360</option><option>Xbox One</option>
-                <option>Xbox Series X/S</option><option>Multi-Platform</option>
-              </datalist>
+              <select class="form-control" name="platform" id="hwPlatformSelect">
+                <option value="">— Select platform —</option>
+                <optgroup label="Nintendo">
+                  <option>NES</option>
+                  <option>SNES</option>
+                  <option>Nintendo 64</option>
+                  <option>GameCube</option>
+                  <option>PAL GameCube</option>
+                  <option>Wii</option>
+                  <option>PAL Wii</option>
+                  <option>Wii U</option>
+                  <option>Nintendo Switch</option>
+                  <option>Game Boy</option>
+                  <option>Game Boy Color</option>
+                  <option>Game Boy Advance</option>
+                  <option>Nintendo DS</option>
+                  <option>Nintendo 3DS</option>
+                </optgroup>
+                <optgroup label="Sony">
+                  <option>PlayStation</option>
+                  <option>PlayStation 2</option>
+                  <option>PlayStation 3</option>
+                  <option>PlayStation 4</option>
+                  <option>PlayStation 5</option>
+                  <option>PSP</option>
+                  <option>PS Vita</option>
+                  <option>PAL PlayStation</option>
+                  <option>PAL PlayStation 2</option>
+                  <option>PAL PlayStation 3</option>
+                  <option>PAL PlayStation 4</option>
+                  <option>PAL PlayStation 5</option>
+                  <option>Japan PlayStation</option>
+                  <option>Japan PlayStation 2</option>
+                </optgroup>
+                <optgroup label="Sega">
+                  <option>Sega Master System</option>
+                  <option>Sega Genesis / Mega Drive</option>
+                  <option>Sega Saturn</option>
+                  <option>Sega Dreamcast</option>
+                  <option>Game Gear</option>
+                </optgroup>
+                <optgroup label="Microsoft">
+                  <option>Xbox</option>
+                  <option>Xbox 360</option>
+                  <option>Xbox One</option>
+                  <option>Xbox Series X/S</option>
+                </optgroup>
+                <optgroup label="Atari">
+                  <option>Atari 2600</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option>Neo Geo</option>
+                  <option>PC</option>
+                  <option>Multi-Platform</option>
+                </optgroup>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label">Manufacturer</label>
-              <input type="text" class="form-control" name="manufacturer" placeholder="e.g. Sony, Nintendo, Microsoft">
+              <input type="text" class="form-control" name="manufacturer" list="hwManufacturerList" placeholder="e.g. Sony, Nintendo, Microsoft" autocomplete="off">
+              <datalist id="hwManufacturerList">
+                <option>Nintendo</option><option>Sony</option><option>Microsoft</option>
+                <option>Sega</option><option>Atari</option><option>SNK</option>
+                <option>NEC</option><option>Philips</option><option>3DO</option>
+              </datalist>
             </div>
             <div class="form-group">
               <label class="form-label">Model Number</label>
@@ -813,12 +837,12 @@
             </div>
             <div class="form-group">
               <label class="form-label">Region</label>
-              <select class="form-control" name="region">
-                <option value="">— Select —</option>
+              <input type="text" class="form-control" name="region" list="hwRegionList" placeholder="e.g. NTSC (USA), PAL (Europe)" autocomplete="off">
+              <datalist id="hwRegionList">
                 <option>NTSC (USA)</option><option>NTSC-J (Japan)</option>
                 <option>PAL (Europe)</option><option>PAL-AU (Australia)</option>
                 <option>Multi-Region</option><option>Universal</option>
-              </select>
+              </datalist>
             </div>
             <div class="form-group">
               <label class="form-label">Quantity</label>
@@ -854,18 +878,6 @@
                 <option>Loose</option>
                 <option>No Controllers</option>
               </select>
-            </div>
-            <div class="form-group span-2">
-              <label class="form-label">Completeness</label>
-              <div class="form-check-group">
-                <label class="form-check"><input type="checkbox" name="has_original_box"> Has Original Box</label>
-                <label class="form-check"><input type="checkbox" name="has_all_accessories"> Has All Accessories (cables, etc.)</label>
-                <label class="form-check"><input type="checkbox" name="jailbroken"> Jailbroken / Modded</label>
-              </div>
-            </div>
-            <div class="form-group span-2">
-              <label class="form-label">Modifications</label>
-              <input type="text" class="form-control" name="modifications" placeholder="e.g. HDMI modded, region free mod, recapped">
             </div>
           </div>
         </div>
@@ -904,8 +916,15 @@
               <input type="text" class="form-control" name="where_purchased" list="shopList" placeholder="e.g. eBay, local shop">
             </div>
             <div class="form-group span-2">
+              <div class="form-check-group">
+                <label class="form-check"><input type="checkbox" name="has_original_box"> Has Original Box</label>
+                <label class="form-check"><input type="checkbox" name="has_all_accessories"> Has All Accessories (cables, etc.)</label>
+                <label class="form-check"><input type="checkbox" name="jailbroken"> Jailbroken / Modded</label>
+              </div>
+            </div>
+            <div class="form-group span-2">
               <label class="form-label">Remarks / Notes</label>
-              <textarea class="form-control" name="remarks" placeholder="Any notes about this hardware item..."></textarea>
+              <textarea class="form-control" name="remarks" placeholder="Any notes about this item..."></textarea>
             </div>
           </div>
         </div>
@@ -1198,16 +1217,16 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="/js/api.js?v=24"></script>
-<script src="/js/currency.js?v=24"></script>
-<script src="/js/platforms.js?v=24"></script>
-<script src="/js/utils.js?v=24"></script>
-<script src="/js/dashboard.js?v=24"></script>
-<script src="/js/games.js?v=24"></script>
-<script src="/js/hardware.js?v=24"></script>
-<script src="/js/forsale.js?v=24"></script>
-<script src="/js/logs.js?v=24"></script>
-<script src="/js/app.js?v=24"></script>
+<script src="/js/api.js?v=25"></script>
+<script src="/js/currency.js?v=25"></script>
+<script src="/js/platforms.js?v=25"></script>
+<script src="/js/utils.js?v=25"></script>
+<script src="/js/dashboard.js?v=25"></script>
+<script src="/js/games.js?v=25"></script>
+<script src="/js/hardware.js?v=25"></script>
+<script src="/js/forsale.js?v=25"></script>
+<script src="/js/logs.js?v=25"></script>
+<script src="/js/app.js?v=25"></script>
 
 </body>
 </html>
