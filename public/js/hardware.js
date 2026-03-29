@@ -1,6 +1,62 @@
 // Hardware module — factory-based so Systems, Controllers, Peripherals share one implementation
 let _hwCommonInitDone = false;
 let _activeHwPage = null; // which page instance owns the shared modal
+let _suppressHwAutofill = false; // prevents autofill firing during fillForm
+
+// Auto-fill defaults keyed by platform name (used for Systems category)
+const PLATFORM_DEFAULTS = {
+  // Nintendo home
+  'NES':                       { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'PAL NES':                   { type: 'Console',          manufacturer: 'Nintendo',  region: 'PAL (Europe)' },
+  'Famicom':                   { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC-J (Japan)' },
+  'SNES':                      { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'PAL SNES':                  { type: 'Console',          manufacturer: 'Nintendo',  region: 'PAL (Europe)' },
+  'Super Famicom':             { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC-J (Japan)' },
+  'Nintendo 64':               { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'PAL Nintendo 64':           { type: 'Console',          manufacturer: 'Nintendo',  region: 'PAL (Europe)' },
+  'Japan Nintendo 64':         { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC-J (Japan)' },
+  'GameCube':                  { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'PAL GameCube':              { type: 'Console',          manufacturer: 'Nintendo',  region: 'PAL (Europe)' },
+  'Wii':                       { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'PAL Wii':                   { type: 'Console',          manufacturer: 'Nintendo',  region: 'PAL (Europe)' },
+  'Wii U':                     { type: 'Console',          manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'Nintendo Switch':           { type: 'Console',          manufacturer: 'Nintendo',  region: 'Multi-Region' },
+  // Nintendo handheld
+  'Game Boy':                  { type: 'Handheld Console', manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'Game Boy Color':            { type: 'Handheld Console', manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'Game Boy Advance':          { type: 'Handheld Console', manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'Nintendo DS':               { type: 'Handheld Console', manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  'Nintendo 3DS':              { type: 'Handheld Console', manufacturer: 'Nintendo',  region: 'NTSC (USA)' },
+  // Sony home
+  'PlayStation':               { type: 'Console',          manufacturer: 'Sony',      region: 'NTSC (USA)' },
+  'PAL PlayStation':           { type: 'Console',          manufacturer: 'Sony',      region: 'PAL (Europe)' },
+  'Japan PlayStation':         { type: 'Console',          manufacturer: 'Sony',      region: 'NTSC-J (Japan)' },
+  'PlayStation 2':             { type: 'Console',          manufacturer: 'Sony',      region: 'NTSC (USA)' },
+  'PAL PlayStation 2':         { type: 'Console',          manufacturer: 'Sony',      region: 'PAL (Europe)' },
+  'Japan PlayStation 2':       { type: 'Console',          manufacturer: 'Sony',      region: 'NTSC-J (Japan)' },
+  'PlayStation 3':             { type: 'Console',          manufacturer: 'Sony',      region: 'NTSC (USA)' },
+  'PAL PlayStation 3':         { type: 'Console',          manufacturer: 'Sony',      region: 'PAL (Europe)' },
+  'PlayStation 4':             { type: 'Console',          manufacturer: 'Sony',      region: 'Multi-Region' },
+  'PlayStation 5':             { type: 'Console',          manufacturer: 'Sony',      region: 'Multi-Region' },
+  // Sony handheld
+  'PSP':                       { type: 'Handheld Console', manufacturer: 'Sony',      region: 'NTSC (USA)' },
+  'PS Vita':                   { type: 'Handheld Console', manufacturer: 'Sony',      region: 'Multi-Region' },
+  // Microsoft
+  'Xbox':                      { type: 'Console',          manufacturer: 'Microsoft', region: 'NTSC (USA)' },
+  'Xbox 360':                  { type: 'Console',          manufacturer: 'Microsoft', region: 'NTSC (USA)' },
+  'Xbox One':                  { type: 'Console',          manufacturer: 'Microsoft', region: 'Multi-Region' },
+  'Xbox Series X/S':           { type: 'Console',          manufacturer: 'Microsoft', region: 'Multi-Region' },
+  // Sega
+  'Sega Master System':        { type: 'Console',          manufacturer: 'Sega',      region: 'NTSC (USA)' },
+  'Sega Genesis / Mega Drive': { type: 'Console',          manufacturer: 'Sega',      region: 'NTSC (USA)' },
+  'Sega Saturn':               { type: 'Console',          manufacturer: 'Sega',      region: 'NTSC (USA)' },
+  'Sega Dreamcast':            { type: 'Console',          manufacturer: 'Sega',      region: 'NTSC (USA)' },
+  'Game Gear':                 { type: 'Handheld Console', manufacturer: 'Sega',      region: 'NTSC (USA)' },
+  // Atari
+  'Atari 2600':                { type: 'Console',          manufacturer: 'Atari',     region: 'NTSC (USA)' },
+  // Other
+  'Neo Geo':                   { type: 'Console',          manufacturer: 'SNK',       region: 'NTSC (USA)' },
+};
 
 function makeHardwarePage(cfg) {
   // cfg: { category, types[], tableId, tbodyId, countId, batchBarId, batchCountId,
@@ -215,6 +271,21 @@ function makeHardwarePage(cfg) {
     renderTable();
   }
 
+  const IS_SYSTEMS = cfg.category === 'systems';
+
+  function _updateModalLabels() {
+    const titleEl = document.getElementById('hwFormSectionTitle');
+    if (titleEl) titleEl.textContent = IS_SYSTEMS ? '🖥️ System Info' : '🕹️ Hardware Info';
+    const platLabelEl = document.getElementById('hwPlatformLabel');
+    if (platLabelEl) platLabelEl.textContent = IS_SYSTEMS ? 'Platform / System *' : 'Platform / System *';
+    const nameLabelEl = document.getElementById('hwNameLabel');
+    if (nameLabelEl) nameLabelEl.textContent = IS_SYSTEMS ? 'Name / Model *' : 'Name *';
+    const nameEl = document.getElementById('hwName');
+    if (nameEl) nameEl.placeholder = IS_SYSTEMS
+      ? 'e.g. PlayStation 2 Fat (SCPH-50004), Nintendo 64 (AUS)'
+      : 'e.g. DualShock 3 Controller, Memory Card 8MB';
+  }
+
   function _populateTypeList() {
     const typeList = document.getElementById('hwTypeList');
     if (typeList) typeList.innerHTML = cfg.types.map(t => `<option>${esc(t)}</option>`).join('');
@@ -226,6 +297,7 @@ function makeHardwarePage(cfg) {
     document.getElementById('hwModalTitle').textContent = cfg.addLabel;
     document.getElementById('hwForm').reset();
     _populateTypeList();
+    _updateModalLabels();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
     openModal('hwModal');
@@ -236,6 +308,7 @@ function makeHardwarePage(cfg) {
     editingId = id;
     document.getElementById('hwModalTitle').textContent = 'Edit';
     _populateTypeList();
+    _updateModalLabels();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
     try {
@@ -296,6 +369,7 @@ function makeHardwarePage(cfg) {
   }
 
   function fillForm(h) {
+    _suppressHwAutofill = true;
     const f = document.getElementById('hwForm');
     const set = (name, val) => { const el = f.elements[name]; if (el) el.value = val ?? ''; };
     const setCheck = (name, val) => { const el = f.elements[name]; if (el) el.checked = bool(val); };
@@ -326,11 +400,12 @@ function makeHardwarePage(cfg) {
     if (platSel && h.platform) {
       platSel.value = h.platform;
       if (platSel.value !== h.platform) {
-        // Value not in predefined options — add it
         const opt = new Option(h.platform, h.platform, true, true);
         platSel.add(opt);
       }
     }
+
+    _suppressHwAutofill = false;
   }
 
   async function saveItem() {
@@ -468,10 +543,33 @@ function makeHardwarePage(cfg) {
       document.getElementById('saveHwBtn')?.addEventListener('click', () => { if (_activeHwPage) _activeHwPage.saveItem(); });
       document.getElementById('hwModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwModal'); });
       document.getElementById('hwDetailModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('hwDetailModal'); });
+
+      // Platform autofill — only active when Systems page is open
+      document.getElementById('hwPlatformSelect')?.addEventListener('change', e => {
+        if (_suppressHwAutofill) return;
+        if (!_activeHwPage || _activeHwPage.cfg.category !== 'systems') return;
+        const platform = e.target.value;
+        const defaults = PLATFORM_DEFAULTS[platform];
+        if (!defaults) return;
+        const f = document.getElementById('hwForm');
+        // Type: always fill (deterministic for systems)
+        const typeEl = f.elements.type;
+        if (typeEl) typeEl.value = defaults.type;
+        // Manufacturer: fill if empty
+        const mfrEl = f.elements.manufacturer;
+        if (mfrEl && !mfrEl.value) mfrEl.value = defaults.manufacturer;
+        // Region: fill if empty
+        const regEl = f.elements.region;
+        if (regEl && !regEl.value) regEl.value = defaults.region;
+        // Name: suggest platform name if field is currently empty
+        const nameEl = f.elements.name;
+        if (nameEl && !nameEl.value) nameEl.value = platform;
+      });
     }
   }
 
   const inst = {
+    cfg,
     init, load, openAdd, openEdit, openDetail, saveItem, deleteItem,
     refreshValue, refreshAllValues,
     toggleSelect: (id, checked) => {
