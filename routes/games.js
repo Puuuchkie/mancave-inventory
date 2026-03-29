@@ -5,7 +5,7 @@ const { sumInBase } = require('./currencyHelper');
 
 // GET all games with optional filters
 router.get('/', (req, res) => {
-  const { search, platform, condition, genre, finished } = req.query;
+  const { search, platform, condition, genre, finished, unpriced } = req.query;
   let query = 'SELECT * FROM games WHERE 1=1';
   const params = [];
 
@@ -21,6 +21,7 @@ router.get('/', (req, res) => {
     query += ' AND finished = ?';
     params.push(finished === 'true' || finished === '1' ? 1 : 0);
   }
+  if (unpriced === 'true') { query += ' AND (price_value IS NULL OR price_value = 0)'; }
 
   query += ' ORDER BY title ASC';
   const games = db.prepare(query).all(...params);

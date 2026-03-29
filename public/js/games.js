@@ -9,6 +9,7 @@ const GamesPage = (() => {
   let filterCondition = '';
   let filterGenre = '';
   let filterFinished = '';
+  let filterUnpriced = false;
   let selectedIds = new Set();
   let lastCheckedIdx = -1;
 
@@ -81,6 +82,7 @@ const GamesPage = (() => {
       if (filterCondition) params.condition = filterCondition;
       if (filterGenre) params.genre = filterGenre;
       if (filterFinished !== '') params.finished = filterFinished;
+      if (filterUnpriced) params.unpriced = 'true';
 
       allGames = await API.getGames(params);
       renderTable();
@@ -713,6 +715,13 @@ const GamesPage = (() => {
         filterFinished = chip.dataset.finishedFilter;
         load();
       });
+    });
+
+    // Unpriced filter chip
+    document.getElementById('filterUnpricedChip')?.addEventListener('click', () => {
+      filterUnpriced = !filterUnpriced;
+      document.getElementById('filterUnpricedChip').classList.toggle('active', filterUnpriced);
+      load();
     });
 
     // Table sort
