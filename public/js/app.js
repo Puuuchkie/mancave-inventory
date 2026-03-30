@@ -486,6 +486,7 @@ const App = (() => {
     const initialPage = validPages.includes(pathPage) ? pathPage : 'dashboard';
 
     Platforms.load();
+    loadSidebarCounts();
     navigate(initialPage, { replace: true });
 
     // Load currency in background; refresh dashboard totals when ready
