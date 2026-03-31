@@ -79,12 +79,26 @@ async function axiosWithRetry(opts, maxRetries = 3) {
   }
 }
 
+// Convert common Roman numerals to Arabic digits for fuzzy title matching.
+// Handles word-boundary matches only to avoid clobbering words like "mix", "six", etc.
+function normalizeNumerals(s) {
+  return s
+    .replace(/\bXIII\b/gi, '13').replace(/\bXII\b/gi, '12').replace(/\bXI\b/gi, '11').replace(/\bXIV\b/gi, '14').replace(/\bXV\b/gi, '15')
+    .replace(/\bIX\b/gi, '9').replace(/\bVIII\b/gi, '8').replace(/\bVII\b/gi, '7').replace(/\bVI\b/gi, '6')
+    .replace(/\bIV\b/gi, '4').replace(/\bIII\b/gi, '3').replace(/\bII\b/gi, '2');
+}
+
 async function fetchPriceFromPC(title, platform, condition) {
   // Normalise platform before sending to PC (strips PAL/Japan prefix, fixes capitalisation)
   const pcPlatform = normalizeForPcSearch(platform);
 
+  // Strip bracket/paren content from the search query — PC's search API handles
+  // "[Steelbook Edition]" poorly and returns zero results. We keep the full title
+  // for scoring so steelbook/edition variants still win when PC does return them.
+  const searchTitle = title.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\([^)]*\)/g, '').trim();
+
   // 1. Search for the game — use type=prices (type=videogames now 301s to this)
-  const q = encodeURIComponent([title, pcPlatform].filter(Boolean).join(' '));
+  const q = encodeURIComponent([searchTitle, pcPlatform].filter(Boolean).join(' '));
   const searchResp = await axiosWithRetry({
     method: 'get',
     url: `${PC_BASE}/search-products?q=${q}&type=prices`,
@@ -99,8 +113,8 @@ async function fetchPriceFromPC(title, platform, condition) {
   }
   logger.info('pricecharting', `Searching: "${title}" / "${pcPlatform}" (${data.products.length} results)`);
 
-  // Pick best-matching product by title + console similarity
-  const normalize = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  // Normalize: lowercase + roman numerals → arabic + collapse non-alphanumeric
+  const normalize = s => normalizeNumerals(String(s).toLowerCase()).replace(/[^a-z0-9]+/g, ' ').trim();
   const nt = normalize(title);
   const np = normalize(pcPlatform);
 
@@ -111,6 +125,7 @@ async function fetchPriceFromPC(title, platform, condition) {
     if (pn === nt) titleScore = 100;
     else if (pn.startsWith(nt + ' ')) titleScore = 80;
     else if (pn.includes(nt)) titleScore = 60;
+    else if (nt.startsWith(pn + ' ') || nt.includes(pn)) titleScore = 50; // query is more specific than result
     else {
       const pWords = new Set(pn.split(' '));
       const qWords = nt.split(' ').filter(Boolean);
