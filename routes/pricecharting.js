@@ -295,8 +295,4 @@ router.post('/apply', async (req, res) => {
   }
 });
 
-// No API key needed — these are kept so the settings UI doesn't break
-router.get('/token', (req, res) => res.json({ configured: true }));
-router.post('/token', (req, res) => res.json({ success: true }));
-
 module.exports = router;

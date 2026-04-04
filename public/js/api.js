@@ -1,16 +1,32 @@
 // API client
 const API = {
   async request(method, url, body) {
+    const token = localStorage.getItem('mci_token');
     const opts = {
       method,
       headers: { 'Content-Type': 'application/json' }
     };
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(url, opts);
+    if (res.status === 401) {
+      localStorage.removeItem('mci_token');
+      localStorage.removeItem('mci_username');
+      window.location.href = '/login';
+      throw new Error('Not authenticated');
+    }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Request failed');
     return data;
   },
+
+  // Auth
+  login:          (u, p)   => API.request('POST', '/api/auth/login',           { username: u, password: p }),
+  register:       (u, p)   => API.request('POST', '/api/auth/register',        { username: u, password: p }),
+  changePassword: (cur, nw)=> API.request('POST', '/api/auth/change-password', { current_password: cur, new_password: nw }),
+  getUsers:       ()       => API.request('GET',  '/api/auth/users'),
+  deleteUser:     (id)     => API.request('DELETE', `/api/auth/users/${id}`),
+  getMe:          ()       => API.request('GET',  '/api/auth/me'),
 
   // Games
   getGames: (params = {}) => API.request('GET', '/api/games?' + new URLSearchParams(params)),
@@ -50,12 +66,9 @@ const API = {
   getPlatformSettings: () => API.request('GET', '/api/platforms/settings'),
   savePlatformSettings: (data) => API.request('POST', '/api/platforms/settings', data),
 
-  // eBay pricing
-  searchPrices: (q, category) => API.request('GET', '/api/pricecharting/search?' + new URLSearchParams(category ? { q, category } : { q })),
+  // PriceCharting
   applyPrice: (data) => API.request('POST', '/api/pricecharting/apply', data),
   fetchPriceFromUrl: (data) => API.request('POST', '/api/pricecharting/fetch-url', data),
-  getTokenStatus: () => API.request('GET', '/api/pricecharting/token'),
-  saveToken: (token) => API.request('POST', '/api/pricecharting/token', { token }),
 
   // Catalog number lookup (PS1/PS2/PS3)
   lookupCatalog: (serial) => API.request('GET', `/api/catalog/${encodeURIComponent(serial)}`),
@@ -83,4 +96,11 @@ const API = {
   // Scan
   getScanStatus: ()                     => API.request('GET',  '/api/scan/status'),
   scanGame:      (image, mimeType)      => API.request('POST', '/api/scan', { image, mimeType }),
+
+  // PSN
+  getPsnStatus:     ()        => API.request('GET',    '/api/psn/status'),
+  connectPsn:       (npsso)   => API.request('POST',   '/api/psn/connect', { npsso }),
+  disconnectPsn:    ()        => API.request('DELETE', '/api/psn/disconnect'),
+  getPsnProfile:    ()        => API.request('GET',    '/api/psn/profile'),
+  getPsnTrophies:   ()        => API.request('GET',    '/api/psn/trophies'),
 };

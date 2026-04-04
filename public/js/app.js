@@ -73,8 +73,13 @@ const App = (() => {
     else if (page === 'settings') {
       loadSettings();
       // Load fresh data before rendering so chips are never empty due to a race
-      Promise.all([Platforms.load(), Currency.load()])
-        .finally(() => { renderCurrencySettings(); renderPlatformSettings(); });
+      Promise.all([Platforms.load(), Currency.load()]).finally(() => {
+        const cfg = Currency.settings();
+        const baseEl = document.getElementById('settingsCurrencyBase');
+        if (baseEl) baseEl.textContent = cfg.base || 'USD';
+        const dateEl = document.getElementById('ratesDateLabel');
+        if (dateEl) API.getCurrencyRates().then(r => { if (r.date) dateEl.textContent = 'Rates: ' + r.date; }).catch(() => {});
+      });
     }
     else if (page === 'logs') { LogsPage.load(); LogsPage.startAutoRefresh(); }
   }
@@ -98,14 +103,6 @@ const App = (() => {
 
   async function loadSettings() {
     try {
-      const ebay = await API.getTokenStatus();
-      const ebayEl = document.getElementById('tokenStatus');
-      if (ebayEl) {
-        ebayEl.className = `token-status ${ebay.configured ? 'ok' : 'missing'}`;
-        ebayEl.textContent = ebay.configured ? '✓ App ID configured' : '✕ Not configured';
-      }
-    } catch {}
-    try {
       const igdb = await API.checkIgdbKey();
       const el = document.getElementById('igdbStatus');
       if (el) {
@@ -113,17 +110,38 @@ const App = (() => {
         el.textContent = igdb.configured ? '✓ Credentials configured' : '✕ Not configured';
       }
     } catch {}
+    try {
+      const psn = await API.getPsnStatus();
+      const el = document.getElementById('psnStatus');
+      if (el) {
+        if (!psn.connected) {
+          el.className = 'token-status missing';
+          el.textContent = '✕ Not connected';
+        } else if (psn.expired) {
+          el.className = 'token-status missing';
+          el.textContent = '⚠ Session expired — reconnect';
+        } else {
+          el.className = 'token-status ok';
+          el.textContent = '✓ Connected' + (psn.hint ? ` (${psn.hint})` : '');
+        }
+      }
+    } catch {}
+    // Populate account settings
+    renderAccountSettings();
   }
 
-  async function saveToken() {
-    const token = document.getElementById('tokenInput').value.trim();
-    if (!token) { toast('Please enter an App ID', 'error'); return; }
+  async function connectPsn() {
+    const npsso = document.getElementById('psnNpsso')?.value.trim();
+    if (!npsso) { toast('Enter your NPSSO token', 'error'); return; }
+    const btn = document.getElementById('savePsnBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
     try {
-      await API.saveToken(token);
-      document.getElementById('tokenInput').value = '';
-      toast('eBay App ID saved!', 'success');
+      await API.connectPsn(npsso);
+      document.getElementById('psnNpsso').value = '';
+      toast('PSN connected!', 'success');
       loadSettings();
     } catch (e) { toast(e.message, 'error'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Connect'; } }
   }
 
   // ── IGDB ─────────────────────────────────────────────────────────────────────
@@ -171,7 +189,7 @@ const App = (() => {
       await API.savePlatformSettings({ enabled });
       await Platforms.load();
       toast('Platform settings saved!', 'success');
-      renderPlatformSettings();
+      closePlatformsModal();
     } catch (e) { toast(e.message, 'error'); }
   }
 
@@ -229,7 +247,10 @@ const App = (() => {
       await API.saveCurrencySettings({ base, enabled });
       await Currency.load();
       toast('Currency settings saved!', 'success');
-      renderCurrencySettings();
+      closeCurrenciesModal();
+      // Update the compact card
+      const baseEl = document.getElementById('settingsCurrencyBase');
+      if (baseEl) baseEl.textContent = base;
     } catch (e) { toast(e.message, 'error'); }
   }
 
@@ -243,6 +264,89 @@ const App = (() => {
       renderCurrencySettings();
     } catch (e) { toast(e.message, 'error'); }
     finally { if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Rates'; } }
+  }
+
+  // ── Platform/Currency modal helpers ─────────────────────────────────────────
+  function openPlatformsModal() {
+    renderPlatformSettings();
+    document.getElementById('platformsModal')?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePlatformsModal() {
+    document.getElementById('platformsModal')?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function openCurrenciesModal() {
+    renderCurrencySettings();
+    document.getElementById('currenciesModal')?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeCurrenciesModal() {
+    document.getElementById('currenciesModal')?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  // ── Account / Auth ──────────────────────────────────────────────────────────
+  function renderAccountSettings() {
+    const usernameEl = document.getElementById('accountUsername');
+    if (usernameEl) usernameEl.textContent = localStorage.getItem('mci_username') || '—';
+    loadUserList();
+  }
+
+  async function loadUserList() {
+    const listEl = document.getElementById('userListBody');
+    if (!listEl) return;
+    try {
+      const users = await API.getUsers();
+      const myId = parseInt(localStorage.getItem('mci_user_id') || '0');
+      listEl.innerHTML = users.map(u => `
+        <tr>
+          <td>${esc(u.username)}${u.id === myId ? ' <span style="color:var(--text-muted);font-size:11px">(you)</span>' : ''}</td>
+          <td style="color:var(--text-muted);font-size:12px">${u.created_at?.slice(0,10) || ''}</td>
+          <td>${u.id !== myId ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red);padding:2px 8px;font-size:12px" onclick="App.deleteUser(${u.id})">Remove</button>` : ''}</td>
+        </tr>`).join('');
+    } catch {}
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('Remove this user?')) return;
+    try { await API.deleteUser(id); loadUserList(); toast('User removed', 'success'); }
+    catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function changePassword() {
+    const cur = document.getElementById('cpCurrent')?.value;
+    const nw  = document.getElementById('cpNew')?.value;
+    const conf= document.getElementById('cpConfirm')?.value;
+    if (!cur || !nw || !conf) { toast('All fields required', 'error'); return; }
+    if (nw !== conf) { toast('New passwords do not match', 'error'); return; }
+    try {
+      await API.changePassword(cur, nw);
+      document.getElementById('cpCurrent').value = '';
+      document.getElementById('cpNew').value = '';
+      document.getElementById('cpConfirm').value = '';
+      toast('Password changed!', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  async function addUser() {
+    const u = document.getElementById('newUserUsername')?.value.trim();
+    const p = document.getElementById('newUserPassword')?.value;
+    if (!u || !p) { toast('Username and password required', 'error'); return; }
+    try {
+      await API.register(u, p);
+      document.getElementById('newUserUsername').value = '';
+      document.getElementById('newUserPassword').value = '';
+      toast(`User "${u}" created`, 'success');
+      loadUserList();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function signOut() {
+    localStorage.removeItem('mci_token');
+    localStorage.removeItem('mci_username');
+    localStorage.removeItem('mci_user_id');
+    window.location.href = '/login';
   }
 
   function initDrawer() {
@@ -267,7 +371,7 @@ const App = (() => {
     });
   }
 
-  function init() {
+  async function init() {
     document.querySelectorAll('.nav-item[data-page]').forEach(el => {
       el.addEventListener('click', () => navigate(el.dataset.page));
     });
@@ -289,17 +393,20 @@ const App = (() => {
     // Settings buttons
     document.getElementById('saveIgdbBtn')?.addEventListener('click', saveIgdbCredentials);
     document.getElementById('savePlatformsBtn')?.addEventListener('click', savePlatformSettings);
-    document.getElementById('saveTokenBtn')?.addEventListener('click', saveToken);
     document.getElementById('saveCurrencyBtn')?.addEventListener('click', saveCurrencySettings);
     document.getElementById('refreshRatesBtn')?.addEventListener('click', refreshRates);
     document.getElementById('baseCurrencySelect')?.addEventListener('change', e => {
-      document.querySelectorAll('.currency-chip').forEach(chip => {
+      document.querySelectorAll('#enabledCurrenciesGrid .currency-chip').forEach(chip => {
         if (chip.dataset.code === e.target.value) {
           chip.classList.add('selected');
           chip.querySelector('.cc-check').textContent = '✓';
         }
       });
     });
+    document.getElementById('changePasswordBtn')?.addEventListener('click', changePassword);
+    document.getElementById('addUserBtn')?.addEventListener('click', addUser);
+    document.getElementById('signOutBtn')?.addEventListener('click', signOut);
+    document.getElementById('savePsnBtn')?.addEventListener('click', connectPsn);
 
     // Export links
     document.getElementById('exportGamesCsv')?.addEventListener('click',  () => { window.location.href = API.exportGames('csv');    });
@@ -488,6 +595,17 @@ const App = (() => {
     const validPages = ['dashboard', 'games', 'systems', 'controllers', 'peripherals', 'forsale', 'scan', 'settings', 'logs'];
     const initialPage = validPages.includes(pathPage) ? pathPage : 'dashboard';
 
+    // Verify JWT + redirect to login if missing/expired
+    const token = localStorage.getItem('mci_token');
+    if (!token) { window.location.replace('/login'); return; }
+    try {
+      const me = await API.getMe();
+      localStorage.setItem('mci_username', me.username);
+      localStorage.setItem('mci_user_id', me.id);
+      const unEl = document.getElementById('sidebarUsername');
+      if (unEl) unEl.textContent = me.username;
+    } catch { return; } // API.request will redirect to /login on 401
+
     Platforms.load();
     loadSidebarCounts();
     navigate(initialPage, { replace: true });
@@ -498,7 +616,7 @@ const App = (() => {
     }).catch(() => {});
   }
 
-  return { init, navigate, loadSidebarCounts, toggleCurrencyChip, togglePlatformChip, saveIgdbCredentials };
+  return { init, navigate, loadSidebarCounts, toggleCurrencyChip, togglePlatformChip, saveIgdbCredentials, deleteUser, signOut, openPlatformsModal, closePlatformsModal, openCurrenciesModal, closeCurrenciesModal };
 })();
 
 document.addEventListener('DOMContentLoaded', () => App.init());

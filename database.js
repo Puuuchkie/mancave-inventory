@@ -72,6 +72,14 @@ function init() {
       value TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS sale_listings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
@@ -124,6 +132,14 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_hw_platform    ON hardware(platform);
     CREATE INDEX IF NOT EXISTS idx_hw_type        ON hardware(type);
   `);
+
+  // Seed default admin user if no users exist yet
+  const userCount = db.prepare('SELECT COUNT(*) as n FROM users').get();
+  if (userCount.n === 0) {
+    const bcrypt = require('bcryptjs');
+    const hash = bcrypt.hashSync('admin', 10);
+    db.prepare("INSERT INTO users (username, password_hash) VALUES ('admin', ?)").run(hash);
+  }
 }
 
 init();
