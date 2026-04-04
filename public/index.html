@@ -819,6 +819,7 @@
                 <option>Complete (CIB)</option>
                 <option>Manual Missing</option>
                 <option>Front Cover Missing</option>
+                <option>Missing Disc / CD</option>
                 <option>Loose</option>
                 <option>Box Only</option>
                 <option>Manual Only</option>
@@ -851,10 +852,20 @@
               <div class="price-conversion" id="gamePaidConversion"></div>
             </div>
             <div class="form-group">
-              <label class="form-label">Market Value
-                <span style="color:var(--text-muted);font-weight:400">— fetched from eBay automatically after saving</span>
-              </label>
-              <div id="ebayFetchStatus" style="font-size:12px;color:var(--text-muted);padding:6px 0">Will be fetched after saving</div>
+              <label class="form-label">Market Value</label>
+              <div class="price-input-wrap">
+                <input type="number" class="form-control" name="price_value" id="gamePriceValue" placeholder="0.00" min="0" step="0.01">
+                <select class="currency-select" name="price_value_currency" id="gameValueCurrency"></select>
+              </div>
+              <div class="price-conversion" id="gameValueConversion"></div>
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" style="color:var(--text-muted)">PriceCharting URL <span style="font-weight:400;font-size:11px">(paste to fetch value by condition)</span></label>
+              <div style="display:flex;gap:8px">
+                <input type="text" class="form-control" id="gamePcUrl" placeholder="https://www.pricecharting.com/game/...">
+                <button type="button" class="btn btn-secondary btn-sm" id="gameFetchPcUrlBtn">Fetch</button>
+              </div>
+              <div id="gamePcUrlStatus" style="font-size:12px;color:var(--text-muted);padding:4px 0;display:none"></div>
             </div>
           </div>
         </div>
@@ -1068,6 +1079,9 @@
                 <option>Complete In Box</option>
                 <option>Loose</option>
                 <option>No Controllers</option>
+                <option>Box Only</option>
+                <option>Manual Only</option>
+                <option>Missing Disc / CD</option>
               </select>
             </div>
           </div>
@@ -1091,6 +1105,14 @@
                 <select class="currency-select" name="price_value_currency" id="hwValueCurrency"></select>
               </div>
               <div class="price-conversion" id="hwValueConversion"></div>
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" style="color:var(--text-muted)">PriceCharting URL <span style="font-weight:400;font-size:11px">(paste to fetch value by condition)</span></label>
+              <div style="display:flex;gap:8px">
+                <input type="text" class="form-control" id="hwPcUrl" placeholder="https://www.pricecharting.com/game/...">
+                <button type="button" class="btn btn-secondary btn-sm" id="hwFetchPcUrlBtn">Fetch</button>
+              </div>
+              <div id="hwPcUrlStatus" style="font-size:12px;color:var(--text-muted);padding:4px 0;display:none"></div>
             </div>
           </div>
         </div>

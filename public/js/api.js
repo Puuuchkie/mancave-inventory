@@ -53,6 +53,7 @@ const API = {
   // eBay pricing
   searchPrices: (q, category) => API.request('GET', '/api/pricecharting/search?' + new URLSearchParams(category ? { q, category } : { q })),
   applyPrice: (data) => API.request('POST', '/api/pricecharting/apply', data),
+  fetchPriceFromUrl: (data) => API.request('POST', '/api/pricecharting/fetch-url', data),
   getTokenStatus: () => API.request('GET', '/api/pricecharting/token'),
   saveToken: (token) => API.request('POST', '/api/pricecharting/token', { token }),
 

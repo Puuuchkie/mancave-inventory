@@ -48,6 +48,7 @@ function priceIdForCondition(condition) {
   if (c.includes('cib') || c.includes('complete in box') || (c.includes('complete') && !c.includes('no manual'))) return 'complete_price';
   if (c.includes('box only')) return 'box_only_price';
   if (c.includes('manual only')) return 'manual_only_price';
+  if (c.includes('missing disc') || c.includes('missing cd')) return 'box_only_price';
   return 'used_price';
 }
 
@@ -192,6 +193,48 @@ async function fetchPriceFromPC(title, platform, condition) {
   logger.success('pricecharting', `${product.productName} / ${product.consoleName} → ${priceId}: $${price}`, `query="${title}" platform="${platform}"`);
   return { price, url, product_name: product.productName, console_name: product.consoleName };
 }
+
+// POST /fetch-url — fetch price directly from a specific PriceCharting game URL
+router.post('/fetch-url', async (req, res) => {
+  const { url, condition, item_type, item_id } = req.body;
+  if (!url) return res.status(400).json({ error: 'url is required' });
+
+  // Validate it's actually a pricecharting.com URL
+  let parsedUrl;
+  try { parsedUrl = new URL(url); } catch { return res.status(400).json({ error: 'Invalid URL' }); }
+  if (!parsedUrl.hostname.endsWith('pricecharting.com')) {
+    return res.status(400).json({ error: 'URL must be from pricecharting.com' });
+  }
+
+  const priceId = priceIdForCondition(condition || '');
+  logger.info('pricecharting', `Fetching URL: ${url} (condition: ${condition || 'loose'} → ${priceId})`);
+
+  try {
+    const pageResp = await axiosWithRetry({
+      method: 'get', url,
+      headers: PAGE_HEADERS, responseType: 'text', timeout: 12000,
+    });
+
+    let price = extractPrice(pageResp.data, priceId);
+    if (price === null && priceId !== 'used_price') {
+      price = extractPrice(pageResp.data, 'used_price');
+    }
+    if (price === null) return res.status(404).json({ error: 'Price not found on that page. Make sure the URL points to a specific game.' });
+
+    // Optionally save to DB if item context provided
+    if (item_id && item_type) {
+      const table = item_type === 'hardware' ? 'hardware' : 'games';
+      db.prepare(`UPDATE ${table} SET price_value = ?, price_value_currency = 'USD', updated_at = datetime('now') WHERE id = ?`)
+        .run(price, item_id);
+      logger.success('pricecharting', `Saved $${price} to ${table} id=${item_id} via URL`);
+    }
+
+    res.json({ price, url });
+  } catch (err) {
+    logger.error('pricecharting', err.message, `url="${url}"`);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /search — used by hardware page manual price search
 router.get('/search', async (req, res) => {

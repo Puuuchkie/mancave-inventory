@@ -404,8 +404,12 @@ const GamesPage = (() => {
     set('release_year', g.release_year); set('catalog_number', g.catalog_number);
     setCheck('finished', g.finished);
     set('price_paid', g.price_paid);
+    set('price_value', g.price_value);
     set('cover_url', g.cover_url);
     Currency.populateSelect(document.getElementById('gamePaidCurrency'), g.price_paid_currency);
+    Currency.populateSelect(document.getElementById('gameValueCurrency'), g.price_value_currency);
+    document.getElementById('gamePcUrl').value = '';
+    document.getElementById('gamePcUrlStatus').style.display = 'none';
     set('date_acquired', g.date_acquired); set('where_purchased', g.where_purchased);
     set('remarks', g.remarks);
     renderStars(g.personal_rating || 0);
@@ -446,6 +450,8 @@ const GamesPage = (() => {
       personal_rating: parseInt(f.dataset.rating) || null,
       price_paid: parseFloat(f.elements.price_paid.value) || null,
       price_paid_currency: f.elements.price_paid_currency?.value || Currency.settings().base,
+      price_value: parseFloat(f.elements.price_value?.value) || null,
+      price_value_currency: f.elements.price_value_currency?.value || Currency.settings().base,
       pricecharting_id: null,
       cover_url: f.elements.cover_url?.value || null,
       date_acquired: f.elements.date_acquired.value || null,
@@ -474,11 +480,11 @@ const GamesPage = (() => {
       toast(editingId ? 'Game updated!' : 'Game added!', 'success');
       load();
       App.loadSidebarCounts();
-      // Fetch price from PriceCharting in the background after saving
-      if (saved?.id) {
+      // Auto-fetch price from PriceCharting only if no value was manually set
+      if (saved?.id && !data.price_value) {
         API.applyPrice({ query: data.title, platform: data.platform, condition: data.condition, item_type: 'games', item_id: saved.id })
           .then(r => { if (r?.price != null) { toast(`Market value: $${r.price} (PriceCharting)`, 'success'); load(); } })
-          .catch(e => toast(`Price fetch failed: ${e.message}`, 'error'));
+          .catch(() => {}); // silent — user can use URL lookup if search fails
       }
     } catch (e) { toast(e.message, 'error'); }
   }
@@ -668,8 +674,10 @@ const GamesPage = (() => {
   }
 
   function clearEbayStatus() {
-    const el = document.getElementById('ebayFetchStatus');
-    if (el) { el.style.color = 'var(--text-muted)'; el.textContent = 'Will be fetched after saving'; }
+    const url = document.getElementById('gamePcUrl');
+    const status = document.getElementById('gamePcUrlStatus');
+    if (url) url.value = '';
+    if (status) status.style.display = 'none';
   }
 
 
@@ -761,6 +769,29 @@ const GamesPage = (() => {
       select.addEventListener('change', update);
     }
     wireConversion('gamePricePaid', 'gamePaidCurrency', 'gamePaidConversion');
+    wireConversion('gamePriceValue', 'gameValueCurrency', 'gameValueConversion');
+
+    // PriceCharting URL fetch button
+    document.getElementById('gameFetchPcUrlBtn')?.addEventListener('click', async () => {
+      const url = document.getElementById('gamePcUrl')?.value.trim();
+      if (!url) { toast('Paste a PriceCharting URL first', 'error'); return; }
+      const condition = document.getElementById('gameForm')?.elements?.condition?.value || '';
+      const btn = document.getElementById('gameFetchPcUrlBtn');
+      const status = document.getElementById('gamePcUrlStatus');
+      btn.disabled = true; btn.textContent = '⟳';
+      status.style.display = ''; status.style.color = 'var(--text-muted)'; status.textContent = 'Fetching…';
+      try {
+        const r = await API.fetchPriceFromUrl({ url, condition });
+        document.getElementById('gamePriceValue').value = r.price;
+        // Trigger conversion preview update
+        document.getElementById('gamePriceValue').dispatchEvent(new Event('input'));
+        status.style.color = 'var(--green)'; status.textContent = `✓ $${r.price} fetched`;
+      } catch (e) {
+        status.style.color = 'var(--red)'; status.textContent = '✕ ' + e.message;
+      } finally {
+        btn.disabled = false; btn.textContent = 'Fetch';
+      }
+    });
 
     // Select-all checkbox
     document.getElementById('gamesSelectAll')?.addEventListener('change', function () {

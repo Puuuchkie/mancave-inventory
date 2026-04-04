@@ -362,6 +362,10 @@ function makeHardwarePage(cfg) {
     _updateModalLabels();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
+    const hwPcUrl = document.getElementById('hwPcUrl');
+    const hwPcStatus = document.getElementById('hwPcUrlStatus');
+    if (hwPcUrl) hwPcUrl.value = '';
+    if (hwPcStatus) hwPcStatus.style.display = 'none';
     openModal('hwModal');
   }
 
@@ -373,6 +377,10 @@ function makeHardwarePage(cfg) {
     _updateModalLabels();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
+    const hwPcUrl = document.getElementById('hwPcUrl');
+    const hwPcStatus = document.getElementById('hwPcUrlStatus');
+    if (hwPcUrl) hwPcUrl.value = '';
+    if (hwPcStatus) hwPcStatus.style.display = 'none';
     try {
       const h = await API.getHardwareItem(id);
       fillForm(h);
@@ -609,6 +617,27 @@ function makeHardwarePage(cfg) {
       }
       wireConversion('hwPricePaid', 'hwPaidCurrency', 'hwPaidConversion');
       wireConversion('hwPriceValue', 'hwValueCurrency', 'hwValueConversion');
+
+      // PriceCharting URL fetch button
+      document.getElementById('hwFetchPcUrlBtn')?.addEventListener('click', async () => {
+        const url = document.getElementById('hwPcUrl')?.value.trim();
+        if (!url) { toast('Paste a PriceCharting URL first', 'error'); return; }
+        const condition = document.getElementById('hwForm')?.elements?.condition?.value || '';
+        const btn = document.getElementById('hwFetchPcUrlBtn');
+        const status = document.getElementById('hwPcUrlStatus');
+        btn.disabled = true; btn.textContent = '⟳';
+        status.style.display = ''; status.style.color = 'var(--text-muted)'; status.textContent = 'Fetching…';
+        try {
+          const r = await API.fetchPriceFromUrl({ url, condition });
+          document.getElementById('hwPriceValue').value = r.price;
+          document.getElementById('hwPriceValue').dispatchEvent(new Event('input'));
+          status.style.color = 'var(--green)'; status.textContent = `✓ $${r.price} fetched`;
+        } catch (e) {
+          status.style.color = 'var(--red)'; status.textContent = '✕ ' + e.message;
+        } finally {
+          btn.disabled = false; btn.textContent = 'Fetch';
+        }
+      });
 
       document.getElementById('saveHwBatchBtn')?.addEventListener('click', () => { if (_activeHwPage) _activeHwPage._saveBatchEdit(); });
       document.getElementById('saveHwBtn')?.addEventListener('click', () => { if (_activeHwPage) _activeHwPage.saveItem(); });
