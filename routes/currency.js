@@ -57,10 +57,10 @@ router.post('/refresh', async (req, res) => {
 router.get('/settings', (req, res) => {
   const base = db.prepare("SELECT value FROM settings WHERE key = 'currency_base'").get();
   const enabled = db.prepare("SELECT value FROM settings WHERE key = 'currency_enabled'").get();
-  res.json({
-    base: base?.value || 'USD',
-    enabled: enabled?.value ? JSON.parse(enabled.value) : ['USD'],
-  });
+  const enabledList = enabled?.value
+    ? JSON.parse(enabled.value).filter(c => c && typeof c === 'string')
+    : ['USD'];
+  res.json({ base: base?.value || 'USD', enabled: enabledList });
 });
 
 router.post('/settings', (req, res) => {

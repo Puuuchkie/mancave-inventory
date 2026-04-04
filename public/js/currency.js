@@ -76,7 +76,7 @@ const Currency = (() => {
     if (!amount || isNaN(amount) || !parseFloat(amount)) return '';
     const from = (fromCode || cfg.base).toUpperCase();
     return cfg.enabled
-      .filter(c => c !== from)
+      .filter(c => c && c.toUpperCase() !== from)
       .map(c => format(convert(parseFloat(amount), from, c), c))
       .join(' · ');
   }

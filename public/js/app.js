@@ -223,7 +223,7 @@ const App = (() => {
 
   async function saveCurrencySettings() {
     const base = document.getElementById('baseCurrencySelect')?.value;
-    const enabled = [...document.querySelectorAll('.currency-chip.selected')].map(el => el.dataset.code);
+    const enabled = [...document.querySelectorAll('#enabledCurrenciesGrid .currency-chip.selected')].map(el => el.dataset.code).filter(Boolean);
     if (!base || !enabled.length) { toast('Select at least one currency', 'error'); return; }
     try {
       await API.saveCurrencySettings({ base, enabled });
