@@ -194,15 +194,25 @@ async function fetchPriceFromPC(title, platform, condition) {
   return { price, url, product_name: product.productName, console_name: product.consoleName };
 }
 
+function decodeHtmlEntities(str) {
+  if (!str) return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&apos;/g, "'");
+}
+
 // Extract game title and console from PriceCharting page HTML
 function extractPageMeta(html) {
-  // Title is in <h1 id="product_name">…</h1>
   const titleMatch = html.match(/id="product_name"[^>]*>([^<]+)</);
-  const title = titleMatch ? titleMatch[1].trim() : null;
-  // Console is in <a …>Console Name</a> near the breadcrumb or in og:description
+  const title = titleMatch ? decodeHtmlEntities(titleMatch[1].trim()) : null;
   const consoleMatch = html.match(/id="supertype"[^>]*>([^<]+)</) ||
                        html.match(/itemprop="genre"[^>]*>([^<]+)</);
-  const consoleName = consoleMatch ? consoleMatch[1].trim() : null;
+  const consoleName = consoleMatch ? decodeHtmlEntities(consoleMatch[1].trim()) : null;
   return { title, consoleName };
 }
 
