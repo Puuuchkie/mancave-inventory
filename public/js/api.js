@@ -78,4 +78,8 @@ const API = {
   // Logs
   getLogs:   () => API.request('GET', '/api/logs'),
   clearLogs: () => API.request('DELETE', '/api/logs'),
+
+  // Scan
+  getScanStatus: ()                     => API.request('GET',  '/api/scan/status'),
+  scanGame:      (image, mimeType)      => API.request('POST', '/api/scan', { image, mimeType }),
 };

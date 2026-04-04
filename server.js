@@ -20,6 +20,7 @@ app.use('/api/platforms', require('./routes/platforms'));
 app.use('/api/catalog', require('./routes/catalog'));
 app.use('/api/io', require('./routes/io'));
 app.use('/api/forsale', require('./routes/forsale'));
+app.use('/api/scan',   require('./routes/scan'));
 app.get('/api/logs', (req, res) => res.json(logger.getAll()));
 app.delete('/api/logs', (req, res) => { logger.clear(); res.json({ success: true }); });
 

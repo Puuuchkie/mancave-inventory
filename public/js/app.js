@@ -25,6 +25,7 @@ const App = (() => {
       controllers: { title: 'Controllers', sub: 'Gamepads, arcade sticks & light guns' },
       peripherals: { title: 'Peripherals', sub: 'Memory cards, cables, accessories & more' },
       forsale:     { title: 'For Sale',    sub: 'Active listings & sales history' },
+      scan:        { title: 'Scan Game',  sub: 'Identify a game using your camera' },
       settings:    { title: 'Settings',   sub: 'Configure your inventory' },
       logs:        { title: 'Logs',        sub: 'Activity and API request log' },
     };
@@ -68,6 +69,7 @@ const App = (() => {
     else if (page === 'controllers') ControllersPage.load();
     else if (page === 'peripherals') PeripheralsPage.load();
     else if (page === 'forsale')     ForSalePage.load();
+    else if (page === 'scan')        ScanPage.load();
     else if (page === 'settings') {
       loadSettings();
       // Load fresh data before rendering so chips are never empty due to a race
@@ -473,6 +475,7 @@ const App = (() => {
     ControllersPage.init();
     PeripheralsPage.init();
     ForSalePage.init();
+    ScanPage.init();
     LogsPage.init();
 
     // Handle browser back/forward
@@ -482,7 +485,7 @@ const App = (() => {
 
     // Determine initial page from URL
     const pathPage = window.location.pathname.replace(/^\//, '') || 'dashboard';
-    const validPages = ['dashboard', 'games', 'systems', 'controllers', 'peripherals', 'forsale', 'settings', 'logs'];
+    const validPages = ['dashboard', 'games', 'systems', 'controllers', 'peripherals', 'forsale', 'scan', 'settings', 'logs'];
     const initialPage = validPages.includes(pathPage) ? pathPage : 'dashboard';
 
     Platforms.load();

@@ -44,6 +44,11 @@
         <span class="nav-badge" id="badge-forsale">0</span>
       </button>
 
+      <div class="nav-section-label" style="margin-top:8px">Tools</div>
+      <button class="nav-item" data-page="scan">
+        <span class="nav-icon">📷</span> Scan Game
+      </button>
+
       <div class="nav-bottom">
         <div class="nav-section-label">System</div>
         <button class="nav-item" data-page="logs">
@@ -499,6 +504,149 @@
           Data is stored locally in <code style="background:var(--bg-elevated);padding:2px 6px;border-radius:4px;font-size:12px">inventory.db</code> (SQLite).
           Price data is fetched from PriceCharting.com via their API.
         </p>
+      </div>
+    </section>
+
+    <!-- ===== SCAN PAGE ===== -->
+    <section class="page" id="page-scan">
+      <!-- Shown when ANTHROPIC_API_KEY is not configured -->
+      <div id="scanUnavailable" style="display:none" class="scan-unavailable">
+        <div style="font-size:48px;margin-bottom:12px">📷</div>
+        <h2 style="margin-bottom:8px">Scan Game is not configured</h2>
+        <p style="color:var(--text-muted);max-width:420px;text-align:center;line-height:1.6">Add your Anthropic API key to <code>.env</code> to enable AI-powered game recognition:</p>
+        <pre class="scan-code-block">ANTHROPIC_API_KEY=sk-ant-...</pre>
+        <p style="color:var(--text-muted);font-size:13px">Restart the server after adding the key.</p>
+      </div>
+
+      <!-- Wizard -->
+      <div id="scanWizard" class="scan-wizard">
+
+        <!-- Step 1: Capture -->
+        <div class="scan-step" id="scan-step-capture">
+          <div class="scan-step-header">
+            <div class="scan-step-pill">Step 1 of 4</div>
+            <h2 class="scan-step-title">Scan a Game</h2>
+            <p class="scan-step-desc">Take a photo or upload an image of the game cover, cartridge, or case.</p>
+          </div>
+          <label class="scan-drop-zone" id="scanDropZone">
+            <div class="scan-drop-icon">📷</div>
+            <div class="scan-drop-text">Tap to take a photo</div>
+            <div class="scan-drop-sub">or drag & drop an image here</div>
+          </label>
+          <input type="file" id="scanFileInput" accept="image/*" style="display:none">
+          <div id="scanPreview" style="display:none" class="scan-preview">
+            <img id="scanPreviewImg" class="scan-preview-img" alt="Game photo">
+            <button class="btn btn-ghost btn-sm" id="scanRetakeBtn" style="margin-top:8px">✕ Remove photo</button>
+          </div>
+          <div class="scan-actions">
+            <button class="btn btn-primary scan-btn-lg" id="scanIdentifyBtn" disabled>🔍 Identify Game</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Identifying -->
+        <div class="scan-step" id="scan-step-identifying" style="display:none">
+          <div class="scan-step-header">
+            <div class="scan-step-pill">Analyzing…</div>
+            <h2 class="scan-step-title">Identifying Game</h2>
+            <p class="scan-step-desc">AI is analyzing the image. This takes a few seconds.</p>
+          </div>
+          <div class="scan-spinner-wrap">
+            <div class="spinner" style="width:52px;height:52px;border-width:5px"></div>
+          </div>
+        </div>
+
+        <!-- Step 3: Confirm -->
+        <div class="scan-step" id="scan-step-confirm" style="display:none">
+          <div class="scan-step-header">
+            <div class="scan-step-pill">Step 2 of 4</div>
+            <h2 class="scan-step-title">Confirm Game</h2>
+            <p class="scan-step-desc">Review and correct the detected info if needed.</p>
+          </div>
+          <div id="scanConfidence" style="margin-bottom:16px"></div>
+          <div class="form-grid">
+            <div class="form-group" style="grid-column:span 2">
+              <label class="form-label">Title *</label>
+              <input type="text" class="form-control" id="scanTitle" placeholder="Game title">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Platform *</label>
+              <select class="form-control" id="scanPlatform">
+                <option value="">— Select platform —</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Region</label>
+              <select class="form-control" id="scanRegion">
+                <option value="">— Select —</option>
+                <option>NTSC (USA)</option>
+                <option>PAL (Europe)</option>
+                <option>NTSC-J (Japan)</option>
+                <option>Multi-Region</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:span 2">
+              <label class="form-label">Edition</label>
+              <input type="text" class="form-control" id="scanEdition" placeholder="e.g. Steelbook Edition, Collector's Edition, GOTY">
+            </div>
+          </div>
+          <div id="scanNotes" class="scan-notes" style="display:none"></div>
+          <div class="scan-actions">
+            <button class="btn btn-ghost" id="scanBackToCapture">← Try Again</button>
+            <button class="btn btn-primary" id="scanToCondition">Next →</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Condition -->
+        <div class="scan-step" id="scan-step-condition" style="display:none">
+          <div class="scan-step-header">
+            <div class="scan-step-pill">Step 3 of 4</div>
+            <h2 class="scan-step-title">Condition</h2>
+            <p class="scan-step-desc">What condition is this game in?</p>
+          </div>
+          <div class="scan-condition-grid">
+            <button class="scan-condition-btn">
+              <span class="scan-cond-icon">📦</span>
+              <span class="scan-cond-label">Factory Sealed</span>
+            </button>
+            <button class="scan-condition-btn">
+              <span class="scan-cond-icon">✅</span>
+              <span class="scan-cond-label">Complete in Box</span>
+            </button>
+            <button class="scan-condition-btn">
+              <span class="scan-cond-icon">🎮</span>
+              <span class="scan-cond-label">Loose / No Box</span>
+            </button>
+            <button class="scan-condition-btn">
+              <span class="scan-cond-icon">⚠️</span>
+              <span class="scan-cond-label">Poor Condition</span>
+            </button>
+          </div>
+          <div class="scan-actions">
+            <button class="btn btn-ghost" id="scanBackToConfirm">← Back</button>
+          </div>
+        </div>
+
+        <!-- Step 5: Value & Add -->
+        <div class="scan-step" id="scan-step-value" style="display:none">
+          <div class="scan-step-header">
+            <div class="scan-step-pill">Step 4 of 4</div>
+            <h2 class="scan-step-title">Value & Add</h2>
+          </div>
+          <div id="scanSummary" class="scan-summary"></div>
+          <div class="scan-value-section">
+            <div id="scanValueResult" style="display:none"></div>
+            <button class="btn btn-secondary" id="scanLookupBtn">💰 Look Up Value</button>
+          </div>
+          <div class="form-group" style="margin-top:20px">
+            <label class="form-label">Price Paid (optional)</label>
+            <input type="number" class="form-control" id="scanPricePaid" placeholder="0.00" step="0.01" min="0" style="max-width:180px">
+          </div>
+          <div class="scan-actions" style="margin-top:24px">
+            <button class="btn btn-ghost" id="scanBackToCondition">← Back</button>
+            <button class="btn btn-primary scan-btn-lg" id="scanAddBtn">+ Add to Library</button>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -1268,6 +1416,7 @@
 <script src="/js/games.js?v=28"></script>
 <script src="/js/hardware.js?v=28"></script>
 <script src="/js/forsale.js?v=28"></script>
+<script src="/js/scan.js?v=29"></script>
 <script src="/js/logs.js?v=28"></script>
 <script src="/js/app.js?v=28"></script>
 
