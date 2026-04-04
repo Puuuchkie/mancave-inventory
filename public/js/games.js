@@ -408,8 +408,8 @@ const GamesPage = (() => {
     set('cover_url', g.cover_url);
     Currency.populateSelect(document.getElementById('gamePaidCurrency'), g.price_paid_currency);
     Currency.populateSelect(document.getElementById('gameValueCurrency'), g.price_value_currency);
-    document.getElementById('gamePcUrl').value = '';
-    document.getElementById('gamePcUrlStatus').style.display = 'none';
+    const statusEl = document.getElementById('gamePcUrlStatus');
+    if (statusEl) statusEl.style.display = 'none';
     set('date_acquired', g.date_acquired); set('where_purchased', g.where_purchased);
     set('remarks', g.remarks);
     renderStars(g.personal_rating || 0);
