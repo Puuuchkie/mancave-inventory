@@ -38,6 +38,27 @@ router.post('/register', (req, res) => {
   res.status(201).json({ token, username: user.username });
 });
 
+// POST /api/auth/change-username  (requires auth)
+router.post('/change-username', requireAuth, (req, res) => {
+  const { new_username, password } = req.body;
+  if (!new_username || !password) return res.status(400).json({ error: 'new_username and password are required' });
+  if (new_username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (!bcrypt.compareSync(password, user.password_hash)) {
+    return res.status(401).json({ error: 'Password is incorrect' });
+  }
+
+  const exists = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(new_username, req.user.id);
+  if (exists) return res.status(409).json({ error: 'Username already taken' });
+
+  db.prepare("UPDATE users SET username = ?, updated_at = datetime('now') WHERE id = ?").run(new_username, req.user.id);
+
+  // Issue a new token with updated username
+  const token = jwt.sign({ id: req.user.id, username: new_username }, SECRET, { expiresIn: EXPIRES });
+  res.json({ success: true, token, username: new_username });
+});
+
 // POST /api/auth/change-password  (requires auth)
 router.post('/change-password', requireAuth, (req, res) => {
   const { current_password, new_password } = req.body;

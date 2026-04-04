@@ -383,186 +383,185 @@
     <!-- ===== SETTINGS PAGE ===== -->
     <section class="page" id="page-settings">
 
-      <!-- Account -->
-      <div class="settings-card">
-        <div class="settings-title">Account</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;color:var(--text-muted)">Signed in as</div>
-            <div id="accountUsername" style="font-size:16px;font-weight:700;color:var(--accent)">—</div>
-          </div>
-          <button class="btn btn-secondary" id="signOutBtn">Sign Out</button>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;flex-wrap:wrap">
-          <!-- Change password -->
-          <div>
-            <div class="settings-subtitle">Change Password</div>
-            <div class="form-group">
-              <label class="form-label">Current Password</label>
-              <input type="password" class="form-control" id="cpCurrent" autocomplete="current-password">
+      <!-- Preferences -->
+      <div class="settings-section-label">Preferences</div>
+      <div class="settings-group">
+        <div class="settings-card">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div class="settings-title" style="margin-bottom:4px">Platforms</div>
+              <div class="settings-desc" style="margin:0">Choose which platforms appear in dropdowns.</div>
             </div>
-            <div class="form-group">
-              <label class="form-label">New Password</label>
-              <input type="password" class="form-control" id="cpNew" autocomplete="new-password">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Confirm New Password</label>
-              <input type="password" class="form-control" id="cpConfirm" autocomplete="new-password">
-            </div>
-            <button class="btn btn-primary" id="changePasswordBtn">Update Password</button>
-          </div>
-
-          <!-- User management -->
-          <div>
-            <div class="settings-subtitle">Users</div>
-            <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">
-              <tbody id="userListBody"></tbody>
-            </table>
-            <div class="settings-subtitle" style="margin-top:12px">Add User</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-              <input type="text" class="form-control" id="newUserUsername" placeholder="Username" style="max-width:160px">
-              <input type="password" class="form-control" id="newUserPassword" placeholder="Password" style="max-width:160px">
-              <button class="btn btn-primary" id="addUserBtn">Add</button>
-            </div>
+            <button class="btn btn-primary" onclick="App.openPlatformsModal()">Configure</button>
           </div>
         </div>
-      </div>
-
-      <!-- Platforms (compact popup trigger) -->
-      <div class="settings-card">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:0">
-            <div class="settings-title" style="margin-bottom:4px">Platforms</div>
-            <div class="settings-desc" style="margin:0">Choose which platforms appear in dropdowns.</div>
-          </div>
-          <button class="btn btn-primary" onclick="App.openPlatformsModal()">Configure Platforms</button>
-        </div>
-      </div>
-
-      <!-- Currencies (compact popup trigger) -->
-      <div class="settings-card">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:0">
-            <div class="settings-title" style="margin-bottom:4px">Currencies</div>
-            <div class="settings-desc" style="margin:0">
-              Base: <strong id="settingsCurrencyBase">—</strong> ·
-              <span id="ratesDateLabel" style="color:var(--text-muted)"></span>
-            </div>
-          </div>
-          <button class="btn btn-primary" onclick="App.openCurrenciesModal()">Configure Currencies</button>
-        </div>
-      </div>
-
-      <!-- IGDB -->
-      <div class="settings-card">
-        <div class="settings-title">Game Database — IGDB</div>
-        <div class="settings-desc">
-          Connect to IGDB for game autocomplete with cover art, genre, developer, and release year.
-          Register for free at <strong>dev.twitch.tv</strong> → create an application → copy the
-          <strong>Client ID</strong> and generate a <strong>Client Secret</strong>.
-        </div>
-        <div id="igdbStatus" class="token-status missing" style="margin-bottom:16px">✕ Not configured</div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-          <input type="text" class="form-control" id="igdbClientId" placeholder="Client ID" style="max-width:320px">
-          <input type="password" class="form-control" id="igdbClientSecret" placeholder="Client Secret" style="max-width:320px">
-          <button class="btn btn-primary" id="saveIgdbBtn">Save</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
-          Free tier · No credit card needed · Credentials stored locally
-        </p>
-      </div>
-
-      <!-- PSN -->
-      <div class="settings-card">
-        <div class="settings-title">PlayStation Network</div>
-        <div class="settings-desc">
-          Connect your PSN account to view trophy progress and profile data.
-          Get your NPSSO token by visiting
-          <strong>ca.account.sony.com/api/v1/ssocookie</strong> while signed into PlayStation.
-        </div>
-        <div id="psnStatus" class="token-status missing" style="margin-bottom:16px">✕ Not connected</div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-          <input type="password" class="form-control" id="psnNpsso" placeholder="NPSSO token (60 chars)" style="max-width:400px">
-          <button class="btn btn-primary" id="savePsnBtn">Connect</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
-          Token is stored locally and used only to fetch your PSN data.
-        </p>
-      </div>
-
-      <!-- PriceCharting -->
-      <div class="settings-card">
-        <div class="settings-title">Market Value Lookup — PriceCharting</div>
-        <div class="settings-desc">
-          Market values are fetched automatically from <strong>PriceCharting.com</strong> when you save a game.
-          Prices are condition-aware — CIB, loose, and sealed are looked up separately.
-          No account or API key needed.
-        </div>
-        <div class="token-status ok">✓ No setup required</div>
-      </div>
-
-      <!-- Import / Export -->
-      <div class="settings-card">
-        <div class="settings-title">Import &amp; Export</div>
-        <div class="settings-desc">
-          Export your collection to CSV or Excel. Import from a CSV or Excel file with matching column headers.
-          <strong>Importing appends to your existing data</strong> — it does not overwrite or deduplicate.
-        </div>
-
-        <div class="io-section">
-          <div class="io-block">
-            <div class="io-block-title">🎮 Games</div>
-            <div class="io-row">
-              <span style="color:var(--text-secondary);font-size:13px">Export</span>
-              <div style="display:flex;gap:8px">
-                <a class="btn btn-secondary btn-sm" id="exportGamesCsv">↓ CSV</a>
-                <a class="btn btn-secondary btn-sm" id="exportGamesXlsx">↓ Excel</a>
+        <div class="settings-card">
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div class="settings-title" style="margin-bottom:4px">Currencies</div>
+              <div class="settings-desc" style="margin:0">
+                Base: <strong id="settingsCurrencyBase">—</strong>
+                <span id="ratesDateLabel" style="color:var(--text-muted);margin-left:8px"></span>
               </div>
             </div>
-            <div class="io-row">
-              <span style="color:var(--text-secondary);font-size:13px">Import</span>
-              <div style="display:flex;gap:8px;align-items:center">
-                <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-                  ↑ Choose file
-                  <input type="file" id="importGamesFile" accept=".csv,.xlsx,.xls" style="display:none">
-                </label>
-                <span id="importGamesStatus" style="font-size:12px;color:var(--text-muted)"></span>
-              </div>
-            </div>
+            <button class="btn btn-primary" onclick="App.openCurrenciesModal()">Configure</button>
           </div>
+        </div>
+      </div>
 
-          <div class="io-block">
-            <div class="io-block-title">🕹️ Hardware</div>
-            <div class="io-row">
-              <span style="color:var(--text-secondary);font-size:13px">Export</span>
-              <div style="display:flex;gap:8px">
-                <a class="btn btn-secondary btn-sm" id="exportHwCsv">↓ CSV</a>
-                <a class="btn btn-secondary btn-sm" id="exportHwXlsx">↓ Excel</a>
+      <!-- Integrations -->
+      <div class="settings-section-label">Integrations</div>
+      <div class="settings-group">
+        <div class="settings-card">
+          <div class="settings-title">Game Database — IGDB</div>
+          <div class="settings-desc">
+            Connect to IGDB for game autocomplete with cover art, genre, developer, and release year.
+            Register for free at <strong>dev.twitch.tv</strong> → create an application → copy the
+            <strong>Client ID</strong> and generate a <strong>Client Secret</strong>.
+          </div>
+          <div id="igdbStatus" class="token-status missing" style="margin-bottom:16px">✕ Not configured</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <input type="text" class="form-control" id="igdbClientId" placeholder="Client ID" style="max-width:280px">
+            <input type="password" class="form-control" id="igdbClientSecret" placeholder="Client Secret" style="max-width:280px">
+            <button class="btn btn-primary" id="saveIgdbBtn">Save</button>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted)">Free tier · No credit card needed · Credentials stored locally</p>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-title">PlayStation Network</div>
+          <div class="settings-desc">
+            Connect your PSN account to view trophy progress and profile data.
+            Get your NPSSO token by visiting
+            <strong>ca.account.sony.com/api/v1/ssocookie</strong> while signed into PlayStation.
+          </div>
+          <div id="psnStatus" class="token-status missing" style="margin-bottom:16px">✕ Not connected</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="password" class="form-control" id="psnNpsso" placeholder="NPSSO token (60 chars)" style="max-width:360px">
+            <button class="btn btn-primary" id="savePsnBtn">Connect</button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-title">Market Value Lookup — PriceCharting</div>
+          <div class="settings-desc">
+            Market values are fetched automatically from <strong>PriceCharting.com</strong> when you save a game.
+            Prices are condition-aware — CIB, loose, and sealed are looked up separately.
+            No account or API key needed.
+          </div>
+          <div class="token-status ok">✓ No setup required</div>
+        </div>
+      </div>
+
+      <!-- Management -->
+      <div class="settings-section-label">Management</div>
+      <div class="settings-group">
+        <div class="settings-card">
+          <div class="settings-title">Import &amp; Export</div>
+          <div class="settings-desc">
+            Export your collection to CSV or Excel. Import from a CSV or Excel file with matching column headers.
+            <strong>Importing appends to your existing data</strong> — it does not overwrite or deduplicate.
+          </div>
+          <div class="io-section">
+            <div class="io-block">
+              <div class="io-block-title">🎮 Games</div>
+              <div class="io-row">
+                <span style="color:var(--text-secondary);font-size:13px">Export</span>
+                <div style="display:flex;gap:8px">
+                  <a class="btn btn-secondary btn-sm" id="exportGamesCsv">↓ CSV</a>
+                  <a class="btn btn-secondary btn-sm" id="exportGamesXlsx">↓ Excel</a>
+                </div>
+              </div>
+              <div class="io-row">
+                <span style="color:var(--text-secondary);font-size:13px">Import</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+                    ↑ Choose file
+                    <input type="file" id="importGamesFile" accept=".csv,.xlsx,.xls" style="display:none">
+                  </label>
+                  <span id="importGamesStatus" style="font-size:12px;color:var(--text-muted)"></span>
+                </div>
               </div>
             </div>
-            <div class="io-row">
-              <span style="color:var(--text-secondary);font-size:13px">Import</span>
-              <div style="display:flex;gap:8px;align-items:center">
-                <label class="btn btn-secondary btn-sm" style="cursor:pointer">
-                  ↑ Choose file
-                  <input type="file" id="importHwFile" accept=".csv,.xlsx,.xls" style="display:none">
-                </label>
-                <span id="importHwStatus" style="font-size:12px;color:var(--text-muted)"></span>
+            <div class="io-block">
+              <div class="io-block-title">🕹️ Hardware</div>
+              <div class="io-row">
+                <span style="color:var(--text-secondary);font-size:13px">Export</span>
+                <div style="display:flex;gap:8px">
+                  <a class="btn btn-secondary btn-sm" id="exportHwCsv">↓ CSV</a>
+                  <a class="btn btn-secondary btn-sm" id="exportHwXlsx">↓ Excel</a>
+                </div>
+              </div>
+              <div class="io-row">
+                <span style="color:var(--text-secondary);font-size:13px">Import</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+                    ↑ Choose file
+                    <input type="file" id="importHwFile" accept=".csv,.xlsx,.xls" style="display:none">
+                  </label>
+                  <span id="importHwStatus" style="font-size:12px;color:var(--text-muted)"></span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="settings-card">
+          <div class="settings-title">About</div>
+          <div class="settings-desc" style="margin-bottom:8px">Man Cave Inventory — Personal video game and hardware collection manager.</div>
+          <p style="font-size:13px;color:var(--text-muted)">
+            Data stored locally in <code style="background:var(--bg-elevated);padding:2px 6px;border-radius:4px;font-size:12px">inventory.db</code> (SQLite).
+            Prices from PriceCharting.com.
+          </p>
+        </div>
       </div>
 
-      <div class="settings-card">
-        <div class="settings-title">About</div>
-        <div class="settings-desc">Man Cave Inventory — Personal video game and hardware collection manager.</div>
-        <p style="font-size:13px;color:var(--text-muted)">
-          Data is stored locally in <code style="background:var(--bg-elevated);padding:2px 6px;border-radius:4px;font-size:12px">inventory.db</code> (SQLite).
-          Price data is fetched from PriceCharting.com via their API.
-        </p>
+      <!-- Security -->
+      <div class="settings-section-label">Security</div>
+      <div class="settings-group">
+        <div class="settings-card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+            <div style="flex:1;min-width:0">
+              <div class="settings-desc" style="margin:0 0 2px">Signed in as</div>
+              <div id="accountUsername" style="font-size:17px;font-weight:700;color:var(--accent)">—</div>
+            </div>
+            <button class="btn btn-secondary" id="signOutBtn">Sign Out</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+            <div>
+              <div class="settings-subtitle">Change Username</div>
+              <div class="form-group">
+                <label class="form-label">New Username</label>
+                <input type="text" class="form-control" id="newUsername" autocomplete="username" autocapitalize="none">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" id="unPassword" autocomplete="current-password">
+              </div>
+              <button class="btn btn-primary" id="changeUsernameBtn">Update Username</button>
+            </div>
+
+            <div>
+              <div class="settings-subtitle">Change Password</div>
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-control" id="cpCurrent" autocomplete="current-password">
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" id="cpNew" autocomplete="new-password">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" id="cpConfirm" autocomplete="new-password">
+              </div>
+              <button class="btn btn-primary" id="changePasswordBtn">Update Password</button>
+            </div>
+          </div>
+        </div>
       </div>
+
     </section>
 
     <!-- ===== PLATFORMS MODAL ===== -->

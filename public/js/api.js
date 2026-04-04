@@ -21,12 +21,11 @@ const API = {
   },
 
   // Auth
-  login:          (u, p)   => API.request('POST', '/api/auth/login',           { username: u, password: p }),
-  register:       (u, p)   => API.request('POST', '/api/auth/register',        { username: u, password: p }),
-  changePassword: (cur, nw)=> API.request('POST', '/api/auth/change-password', { current_password: cur, new_password: nw }),
-  getUsers:       ()       => API.request('GET',  '/api/auth/users'),
-  deleteUser:     (id)     => API.request('DELETE', `/api/auth/users/${id}`),
-  getMe:          ()       => API.request('GET',  '/api/auth/me'),
+  login:          (u, p)      => API.request('POST', '/api/auth/login',            { username: u, password: p }),
+  register:       (u, p)      => API.request('POST', '/api/auth/register',         { username: u, password: p }),
+  changeUsername: (un, pw)    => API.request('POST', '/api/auth/change-username',  { new_username: un, password: pw }),
+  changePassword: (cur, nw)   => API.request('POST', '/api/auth/change-password',  { current_password: cur, new_password: nw }),
+  getMe:          ()           => API.request('GET',  '/api/auth/me'),
 
   // Games
   getGames: (params = {}) => API.request('GET', '/api/games?' + new URLSearchParams(params)),

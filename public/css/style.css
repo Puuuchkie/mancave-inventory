@@ -802,6 +802,25 @@ textarea.form-control { resize: vertical; min-height: 72px; }
   margin-bottom: 10px;
 }
 
+.settings-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 0 6px;
+  margin-top: 8px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+}
+.settings-group .settings-card { margin-bottom: 0; border-bottom: none; border-radius: 0; }
+.settings-group .settings-card:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.settings-group .settings-card:last-child  { border-radius: 0 0 var(--radius) var(--radius); border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.settings-group .settings-card:only-child  { border-radius: var(--radius); border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+
 .sidebar-user {
   display: flex;
   align-items: center;

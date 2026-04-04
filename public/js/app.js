@@ -290,34 +290,29 @@ const App = (() => {
   function renderAccountSettings() {
     const usernameEl = document.getElementById('accountUsername');
     if (usernameEl) usernameEl.textContent = localStorage.getItem('mci_username') || '—';
-    loadUserList();
   }
 
-  async function loadUserList() {
-    const listEl = document.getElementById('userListBody');
-    if (!listEl) return;
+  async function changeUsername() {
+    const newUsername = document.getElementById('newUsername')?.value.trim();
+    const password    = document.getElementById('unPassword')?.value;
+    if (!newUsername || !password) { toast('All fields required', 'error'); return; }
     try {
-      const users = await API.getUsers();
-      const myId = parseInt(localStorage.getItem('mci_user_id') || '0');
-      listEl.innerHTML = users.map(u => `
-        <tr>
-          <td>${esc(u.username)}${u.id === myId ? ' <span style="color:var(--text-muted);font-size:11px">(you)</span>' : ''}</td>
-          <td style="color:var(--text-muted);font-size:12px">${u.created_at?.slice(0,10) || ''}</td>
-          <td>${u.id !== myId ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red);padding:2px 8px;font-size:12px" onclick="App.deleteUser(${u.id})">Remove</button>` : ''}</td>
-        </tr>`).join('');
-    } catch {}
-  }
-
-  async function deleteUser(id) {
-    if (!confirm('Remove this user?')) return;
-    try { await API.deleteUser(id); loadUserList(); toast('User removed', 'success'); }
-    catch (e) { toast(e.message, 'error'); }
+      const res = await API.changeUsername(newUsername, password);
+      localStorage.setItem('mci_token', res.token);
+      localStorage.setItem('mci_username', res.username);
+      document.getElementById('newUsername').value = '';
+      document.getElementById('unPassword').value = '';
+      const unEl = document.getElementById('sidebarUsername');
+      if (unEl) unEl.textContent = res.username;
+      renderAccountSettings();
+      toast('Username updated!', 'success');
+    } catch (e) { toast(e.message, 'error'); }
   }
 
   async function changePassword() {
-    const cur = document.getElementById('cpCurrent')?.value;
-    const nw  = document.getElementById('cpNew')?.value;
-    const conf= document.getElementById('cpConfirm')?.value;
+    const cur  = document.getElementById('cpCurrent')?.value;
+    const nw   = document.getElementById('cpNew')?.value;
+    const conf = document.getElementById('cpConfirm')?.value;
     if (!cur || !nw || !conf) { toast('All fields required', 'error'); return; }
     if (nw !== conf) { toast('New passwords do not match', 'error'); return; }
     try {
@@ -326,19 +321,6 @@ const App = (() => {
       document.getElementById('cpNew').value = '';
       document.getElementById('cpConfirm').value = '';
       toast('Password changed!', 'success');
-    } catch (e) { toast(e.message, 'error'); }
-  }
-
-  async function addUser() {
-    const u = document.getElementById('newUserUsername')?.value.trim();
-    const p = document.getElementById('newUserPassword')?.value;
-    if (!u || !p) { toast('Username and password required', 'error'); return; }
-    try {
-      await API.register(u, p);
-      document.getElementById('newUserUsername').value = '';
-      document.getElementById('newUserPassword').value = '';
-      toast(`User "${u}" created`, 'success');
-      loadUserList();
     } catch (e) { toast(e.message, 'error'); }
   }
 
@@ -403,8 +385,8 @@ const App = (() => {
         }
       });
     });
+    document.getElementById('changeUsernameBtn')?.addEventListener('click', changeUsername);
     document.getElementById('changePasswordBtn')?.addEventListener('click', changePassword);
-    document.getElementById('addUserBtn')?.addEventListener('click', addUser);
     document.getElementById('signOutBtn')?.addEventListener('click', signOut);
     document.getElementById('savePsnBtn')?.addEventListener('click', connectPsn);
 
@@ -616,7 +598,7 @@ const App = (() => {
     }).catch(() => {});
   }
 
-  return { init, navigate, loadSidebarCounts, toggleCurrencyChip, togglePlatformChip, saveIgdbCredentials, deleteUser, signOut, openPlatformsModal, closePlatformsModal, openCurrenciesModal, closeCurrenciesModal };
+  return { init, navigate, loadSidebarCounts, toggleCurrencyChip, togglePlatformChip, saveIgdbCredentials, signOut, openPlatformsModal, closePlatformsModal, openCurrenciesModal, closeCurrenciesModal };
 })();
 
 document.addEventListener('DOMContentLoaded', () => App.init());
