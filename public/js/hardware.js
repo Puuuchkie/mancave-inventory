@@ -362,9 +362,7 @@ function makeHardwarePage(cfg) {
     _updateModalLabels();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
-    const hwPcUrl = document.getElementById('hwPcUrl');
     const hwPcStatus = document.getElementById('hwPcUrlStatus');
-    if (hwPcUrl) hwPcUrl.value = '';
     if (hwPcStatus) hwPcStatus.style.display = 'none';
     openModal('hwModal');
   }
@@ -377,9 +375,7 @@ function makeHardwarePage(cfg) {
     _updateModalLabels();
     Currency.populateSelect(document.getElementById('hwPaidCurrency'));
     Currency.populateSelect(document.getElementById('hwValueCurrency'));
-    const hwPcUrl = document.getElementById('hwPcUrl');
     const hwPcStatus = document.getElementById('hwPcUrlStatus');
-    if (hwPcUrl) hwPcUrl.value = '';
     if (hwPcStatus) hwPcStatus.style.display = 'none';
     try {
       const h = await API.getHardwareItem(id);
@@ -618,24 +614,42 @@ function makeHardwarePage(cfg) {
       wireConversion('hwPricePaid', 'hwPaidCurrency', 'hwPaidConversion');
       wireConversion('hwPriceValue', 'hwValueCurrency', 'hwValueConversion');
 
-      // PriceCharting URL fetch button
-      document.getElementById('hwFetchPcUrlBtn')?.addEventListener('click', async () => {
-        const url = document.getElementById('hwPcUrl')?.value.trim();
-        if (!url) { toast('Paste a PriceCharting URL first', 'error'); return; }
-        const condition = document.getElementById('hwForm')?.elements?.condition?.value || '';
-        const btn = document.getElementById('hwFetchPcUrlBtn');
-        const status = document.getElementById('hwPcUrlStatus');
-        btn.disabled = true; btn.textContent = '⟳';
-        status.style.display = ''; status.style.color = 'var(--text-muted)'; status.textContent = 'Fetching…';
+      // PriceCharting URL detection on the name field
+      document.getElementById('hwName')?.addEventListener('input', async function() {
+        const val = this.value.trim();
+        const statusEl = document.getElementById('hwPcUrlStatus');
+        if (!/^https?:\/\/(www\.)?pricecharting\.com\//i.test(val)) {
+          if (statusEl) statusEl.style.display = 'none';
+          return;
+        }
+        statusEl.style.display = ''; statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = '⟳ Fetching from PriceCharting…';
+        this.disabled = true;
         try {
-          const r = await API.fetchPriceFromUrl({ url, condition });
-          document.getElementById('hwPriceValue').value = r.price;
-          document.getElementById('hwPriceValue').dispatchEvent(new Event('input'));
-          status.style.color = 'var(--green)'; status.textContent = `✓ $${r.price} fetched`;
+          const condition = document.getElementById('hwForm')?.elements?.condition?.value || '';
+          const r = await API.fetchPriceFromUrl({ url: val, condition });
+          if (r.title) this.value = r.title;
+          // Fill platform from consoleName
+          if (r.consoleName) {
+            const platSel = document.getElementById('hwPlatformSelect');
+            if (platSel) {
+              platSel.value = r.consoleName;
+              if (platSel.value !== r.consoleName) platSel.add(new Option(r.consoleName, r.consoleName, true, true));
+              platSel.dispatchEvent(new Event('change'));
+            }
+          }
+          // Fill price_value
+          if (r.price != null) {
+            const pvEl = document.getElementById('hwPriceValue');
+            if (pvEl) { pvEl.value = r.price; pvEl.dispatchEvent(new Event('input')); }
+          }
+          statusEl.style.color = 'var(--green)';
+          const parts = [r.title, r.consoleName].filter(Boolean).join(' / ');
+          statusEl.textContent = `✓ ${parts}${r.price != null ? ` — $${r.price}` : ''}`;
         } catch (e) {
-          status.style.color = 'var(--red)'; status.textContent = '✕ ' + e.message;
+          statusEl.style.color = 'var(--red)'; statusEl.textContent = '✕ ' + e.message;
+          this.value = '';
         } finally {
-          btn.disabled = false; btn.textContent = 'Fetch';
+          this.disabled = false; this.focus();
         }
       });
 

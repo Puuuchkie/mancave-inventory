@@ -772,7 +772,8 @@
                 <span id="acInlineSpinner" style="display:none;font-size:12px;color:var(--text-muted);margin-left:6px">⟳ Loading details…</span>
               </label>
               <input type="text" class="form-control" name="title" id="gameTitleInput"
-                placeholder="Search game title…" autocomplete="off">
+                placeholder="Search game title… or paste a PriceCharting URL" autocomplete="off">
+              <div id="gamePcUrlStatus" style="font-size:12px;padding:3px 0;display:none"></div>
               <div class="title-results-panel" id="gameTitleResults"></div>
             </div>
 
@@ -858,14 +859,6 @@
                 <select class="currency-select" name="price_value_currency" id="gameValueCurrency"></select>
               </div>
               <div class="price-conversion" id="gameValueConversion"></div>
-            </div>
-            <div class="form-group span-2">
-              <label class="form-label" style="color:var(--text-muted)">PriceCharting URL <span style="font-weight:400;font-size:11px">(paste to fetch value by condition)</span></label>
-              <div style="display:flex;gap:8px">
-                <input type="text" class="form-control" id="gamePcUrl" placeholder="https://www.pricecharting.com/game/...">
-                <button type="button" class="btn btn-secondary btn-sm" id="gameFetchPcUrlBtn">Fetch</button>
-              </div>
-              <div id="gamePcUrlStatus" style="font-size:12px;color:var(--text-muted);padding:4px 0;display:none"></div>
             </div>
           </div>
         </div>
@@ -1004,7 +997,8 @@
             </div>
             <div class="form-group span-2">
               <label class="form-label" id="hwNameLabel">Name *</label>
-              <input type="text" class="form-control" name="name" id="hwName" placeholder="e.g. PlayStation 2 Fat, DualShock 3 Controller">
+              <input type="text" class="form-control" name="name" id="hwName" placeholder="e.g. PlayStation 2 Fat, DualShock 3 Controller — or paste a PriceCharting URL">
+              <div id="hwPcUrlStatus" style="font-size:12px;padding:3px 0;display:none"></div>
             </div>
             <div class="form-group">
               <label class="form-label">Type *</label>
@@ -1105,14 +1099,6 @@
                 <select class="currency-select" name="price_value_currency" id="hwValueCurrency"></select>
               </div>
               <div class="price-conversion" id="hwValueConversion"></div>
-            </div>
-            <div class="form-group span-2">
-              <label class="form-label" style="color:var(--text-muted)">PriceCharting URL <span style="font-weight:400;font-size:11px">(paste to fetch value by condition)</span></label>
-              <div style="display:flex;gap:8px">
-                <input type="text" class="form-control" id="hwPcUrl" placeholder="https://www.pricecharting.com/game/...">
-                <button type="button" class="btn btn-secondary btn-sm" id="hwFetchPcUrlBtn">Fetch</button>
-              </div>
-              <div id="hwPcUrlStatus" style="font-size:12px;color:var(--text-muted);padding:4px 0;display:none"></div>
             </div>
           </div>
         </div>

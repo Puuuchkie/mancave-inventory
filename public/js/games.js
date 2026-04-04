@@ -674,12 +674,30 @@ const GamesPage = (() => {
   }
 
   function clearEbayStatus() {
-    const url = document.getElementById('gamePcUrl');
     const status = document.getElementById('gamePcUrlStatus');
-    if (url) url.value = '';
     if (status) status.style.display = 'none';
   }
 
+
+  async function handlePcUrl(url, titleInput, statusEl, fillFn) {
+    statusEl.style.display = ''; statusEl.style.color = 'var(--text-muted)'; statusEl.textContent = '⟳ Fetching from PriceCharting…';
+    titleInput.disabled = true;
+    try {
+      const f = document.getElementById('gameForm');
+      const condition = f?.elements?.condition?.value || '';
+      const r = await API.fetchPriceFromUrl({ url, condition });
+      if (r.title) titleInput.value = r.title;
+      fillFn(r);
+      statusEl.style.color = 'var(--green)';
+      const parts = [r.title, r.consoleName].filter(Boolean).join(' / ');
+      statusEl.textContent = `✓ ${parts}${r.price != null ? ` — $${r.price}` : ''}`;
+    } catch (e) {
+      statusEl.style.color = 'var(--red)'; statusEl.textContent = '✕ ' + e.message;
+      titleInput.value = '';
+    } finally {
+      titleInput.disabled = false; titleInput.focus();
+    }
+  }
 
   function initGamePicker() {
     const titleInput = document.getElementById('gameTitleInput');
@@ -688,10 +706,32 @@ const GamesPage = (() => {
       clearTimeout(pickerTimer);
       const q = titleInput.value.trim();
       const panel = document.getElementById('gameTitleResults');
-      if (q.length < 2) {
+      const statusEl = document.getElementById('gamePcUrlStatus');
+
+      // Detect a PriceCharting URL paste
+      if (/^https?:\/\/(www\.)?pricecharting\.com\//i.test(q)) {
         panel.innerHTML = '';
+        handlePcUrl(q, titleInput, statusEl, r => {
+          // Fill platform from consoleName
+          if (r.consoleName) {
+            const platSel = document.getElementById('gamePlatformInput');
+            if (platSel) {
+              platSel.value = r.consoleName;
+              if (platSel.value !== r.consoleName) platSel.add(new Option(r.consoleName, r.consoleName, true, true));
+              platSel.dispatchEvent(new Event('change'));
+            }
+          }
+          // Fill price_value
+          if (r.price != null) {
+            const pvEl = document.getElementById('gamePriceValue');
+            if (pvEl) { pvEl.value = r.price; pvEl.dispatchEvent(new Event('input')); }
+          }
+        });
         return;
       }
+
+      if (statusEl) statusEl.style.display = 'none';
+      if (q.length < 2) { panel.innerHTML = ''; return; }
       pickerTimer = setTimeout(() => fetchPickerResults(q), 350);
     });
     // Dismiss results when clicking outside
@@ -770,28 +810,6 @@ const GamesPage = (() => {
     }
     wireConversion('gamePricePaid', 'gamePaidCurrency', 'gamePaidConversion');
     wireConversion('gamePriceValue', 'gameValueCurrency', 'gameValueConversion');
-
-    // PriceCharting URL fetch button
-    document.getElementById('gameFetchPcUrlBtn')?.addEventListener('click', async () => {
-      const url = document.getElementById('gamePcUrl')?.value.trim();
-      if (!url) { toast('Paste a PriceCharting URL first', 'error'); return; }
-      const condition = document.getElementById('gameForm')?.elements?.condition?.value || '';
-      const btn = document.getElementById('gameFetchPcUrlBtn');
-      const status = document.getElementById('gamePcUrlStatus');
-      btn.disabled = true; btn.textContent = '⟳';
-      status.style.display = ''; status.style.color = 'var(--text-muted)'; status.textContent = 'Fetching…';
-      try {
-        const r = await API.fetchPriceFromUrl({ url, condition });
-        document.getElementById('gamePriceValue').value = r.price;
-        // Trigger conversion preview update
-        document.getElementById('gamePriceValue').dispatchEvent(new Event('input'));
-        status.style.color = 'var(--green)'; status.textContent = `✓ $${r.price} fetched`;
-      } catch (e) {
-        status.style.color = 'var(--red)'; status.textContent = '✕ ' + e.message;
-      } finally {
-        btn.disabled = false; btn.textContent = 'Fetch';
-      }
-    });
 
     // Select-all checkbox
     document.getElementById('gamesSelectAll')?.addEventListener('change', function () {

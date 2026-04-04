@@ -194,9 +194,21 @@ async function fetchPriceFromPC(title, platform, condition) {
   return { price, url, product_name: product.productName, console_name: product.consoleName };
 }
 
-// POST /fetch-url — fetch price directly from a specific PriceCharting game URL
+// Extract game title and console from PriceCharting page HTML
+function extractPageMeta(html) {
+  // Title is in <h1 id="product_name">…</h1>
+  const titleMatch = html.match(/id="product_name"[^>]*>([^<]+)</);
+  const title = titleMatch ? titleMatch[1].trim() : null;
+  // Console is in <a …>Console Name</a> near the breadcrumb or in og:description
+  const consoleMatch = html.match(/id="supertype"[^>]*>([^<]+)</) ||
+                       html.match(/itemprop="genre"[^>]*>([^<]+)</);
+  const consoleName = consoleMatch ? consoleMatch[1].trim() : null;
+  return { title, consoleName };
+}
+
+// POST /fetch-url — fetch price + metadata from a specific PriceCharting game URL
 router.post('/fetch-url', async (req, res) => {
-  const { url, condition, item_type, item_id } = req.body;
+  const { url, condition } = req.body;
   if (!url) return res.status(400).json({ error: 'url is required' });
 
   // Validate it's actually a pricecharting.com URL
@@ -215,21 +227,28 @@ router.post('/fetch-url', async (req, res) => {
       headers: PAGE_HEADERS, responseType: 'text', timeout: 12000,
     });
 
-    let price = extractPrice(pageResp.data, priceId);
-    if (price === null && priceId !== 'used_price') {
-      price = extractPrice(pageResp.data, 'used_price');
-    }
-    if (price === null) return res.status(404).json({ error: 'Price not found on that page. Make sure the URL points to a specific game.' });
+    const html = pageResp.data;
+    const { title, consoleName } = extractPageMeta(html);
 
-    // Optionally save to DB if item context provided
-    if (item_id && item_type) {
-      const table = item_type === 'hardware' ? 'hardware' : 'games';
-      db.prepare(`UPDATE ${table} SET price_value = ?, price_value_currency = 'USD', updated_at = datetime('now') WHERE id = ?`)
-        .run(price, item_id);
-      logger.success('pricecharting', `Saved $${price} to ${table} id=${item_id} via URL`);
+    // Collect all condition prices in one pass
+    const allPrices = {
+      loose:    extractPrice(html, 'used_price'),
+      cib:      extractPrice(html, 'complete_price'),
+      new:      extractPrice(html, 'new_price'),
+      graded:   extractPrice(html, 'graded_price'),
+      box_only: extractPrice(html, 'box_only_price'),
+      manual:   extractPrice(html, 'manual_only_price'),
+    };
+
+    let price = extractPrice(html, priceId);
+    if (price === null && priceId !== 'used_price') price = extractPrice(html, 'used_price');
+
+    if (!title && price === null) {
+      return res.status(404).json({ error: 'Could not read data from that page. Make sure the URL points to a specific game.' });
     }
 
-    res.json({ price, url });
+    logger.success('pricecharting', `URL fetch: "${title}" / "${consoleName}" → ${priceId}: $${price}`);
+    res.json({ price, title, consoleName, allPrices, url });
   } catch (err) {
     logger.error('pricecharting', err.message, `url="${url}"`);
     res.status(500).json({ error: err.message });
