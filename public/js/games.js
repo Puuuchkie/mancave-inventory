@@ -294,7 +294,8 @@ const GamesPage = (() => {
     editingId = null;
     document.getElementById('gameModalTitle').textContent = 'Add Game';
     document.getElementById('gameForm').reset();
-    document.getElementById('gameCoverUrl').value = '';
+    const coverUrlEl = document.getElementById('gameCoverUrl');
+    if (coverUrlEl) coverUrlEl.value = '';
     document.getElementById('gameTitleInput').value = '';
     document.getElementById('gameTitleResults').innerHTML = '';
     const edSel = document.getElementById('gameEditionSelect');
@@ -549,7 +550,8 @@ const GamesPage = (() => {
     if (!item) return;
     document.getElementById('gameTitleInput').value = item.name;
     document.getElementById('gameTitleResults').innerHTML = '';
-    document.getElementById('gameCoverUrl').value = item.cover_url || '';
+    const coverEl = document.getElementById('gameCoverUrl');
+    if (coverEl) coverEl.value = item.cover_url || '';
     document.getElementById('acInlineSpinner').style.display = '';
     try {
       const details = await API.getGameDetails(item.id);
