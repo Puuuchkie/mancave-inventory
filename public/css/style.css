@@ -821,6 +821,96 @@ textarea.form-control { resize: vertical; min-height: 72px; }
 .settings-group .settings-card:last-child  { border-radius: 0 0 var(--radius) var(--radius); border-bottom: 1px solid var(--border); margin-bottom: 20px; }
 .settings-group .settings-card:only-child  { border-radius: var(--radius); border-bottom: 1px solid var(--border); margin-bottom: 20px; }
 
+/* ===== OWNERSHIP TOGGLE ===== */
+.ownership-toggle {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.own-btn {
+  padding: 7px 18px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.own-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.own-icon { font-size: 13px; }
+
+/* ===== TROPHY PROGRESS ===== */
+.trophy-inline {
+  color: var(--yellow);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Card trophy bar — thin strip at bottom of card */
+.trophy-bar-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--bg-elevated);
+  border-radius: 0 0 0 var(--radius-sm);
+}
+.trophy-bar-fill {
+  height: 100%;
+  background: var(--yellow);
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+.game-card { position: relative; }
+
+/* ===== PSN IMPORT MODAL ===== */
+.psn-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.psn-import-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.psn-import-row:hover { background: var(--bg-elevated); }
+.psn-import-row.psn-already { opacity: 0.45; }
+.psn-import-row input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ===== PSN DASHBOARD STATS ===== */
+.psn-trophy-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.psn-trophy-icon { font-size: 20px; }
+.psn-trophy-count {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+.psn-trophy-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 .sidebar-user {
   display: flex;
   align-items: center;

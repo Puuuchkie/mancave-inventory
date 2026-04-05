@@ -97,7 +97,8 @@ router.post('/', (req, res) => {
     developer, publisher, release_year, catalog_number,
     finished, personal_rating, price_paid, price_paid_currency,
     price_value, price_value_currency, pricecharting_id,
-    date_acquired, where_purchased, remarks, cover_url
+    date_acquired, where_purchased, remarks, cover_url,
+    ownership_type, psn_title_id, trophy_pct
   } = req.body;
 
   if (!title || !platform) return res.status(400).json({ error: 'Title and platform are required' });
@@ -108,15 +109,17 @@ router.post('/', (req, res) => {
       developer, publisher, release_year, catalog_number,
       finished, personal_rating, price_paid, price_paid_currency,
       price_value, price_value_currency, pricecharting_id,
-      date_acquired, where_purchased, remarks, cover_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      date_acquired, where_purchased, remarks, cover_url,
+      ownership_type, psn_title_id, trophy_pct
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     title, platform, condition, edition, region, quantity || 1, genre,
     developer, publisher, release_year, catalog_number,
     finished ? 1 : 0, personal_rating,
     price_paid, price_paid_currency || 'USD',
     price_value, price_value_currency || 'USD',
-    pricecharting_id, date_acquired, where_purchased, remarks, cover_url || null
+    pricecharting_id, date_acquired, where_purchased, remarks, cover_url || null,
+    ownership_type || 'physical', psn_title_id || null, trophy_pct != null ? parseInt(trophy_pct) : null
   );
 
   const game = db.prepare('SELECT * FROM games WHERE id = ?').get(result.lastInsertRowid);
@@ -133,7 +136,8 @@ router.put('/:id', (req, res) => {
     developer, publisher, release_year, catalog_number,
     finished, personal_rating, price_paid, price_paid_currency,
     price_value, price_value_currency, pricecharting_id,
-    date_acquired, where_purchased, remarks, cover_url
+    date_acquired, where_purchased, remarks, cover_url,
+    ownership_type, psn_title_id, trophy_pct
   } = req.body;
 
   db.prepare(`
@@ -144,7 +148,9 @@ router.put('/:id', (req, res) => {
       price_paid = ?, price_paid_currency = ?,
       price_value = ?, price_value_currency = ?,
       pricecharting_id = ?, date_acquired = ?, where_purchased = ?,
-      remarks = ?, cover_url = ?, updated_at = datetime('now')
+      remarks = ?, cover_url = ?,
+      ownership_type = ?, psn_title_id = ?, trophy_pct = ?,
+      updated_at = datetime('now')
     WHERE id = ?
   `).run(
     title ?? game.title, platform ?? game.platform, condition, edition, region,
@@ -154,6 +160,9 @@ router.put('/:id', (req, res) => {
     price_value, price_value_currency || game.price_value_currency || 'USD',
     pricecharting_id, date_acquired, where_purchased, remarks,
     cover_url !== undefined ? cover_url : game.cover_url,
+    ownership_type || game.ownership_type || 'physical',
+    psn_title_id !== undefined ? psn_title_id : game.psn_title_id,
+    trophy_pct != null ? parseInt(trophy_pct) : game.trophy_pct,
     req.params.id
   );
 
@@ -183,7 +192,7 @@ router.patch('/batch/edit', (req, res) => {
   const { ids, data } = req.body;
   if (!Array.isArray(ids) || !ids.length || !data) return res.status(400).json({ error: 'ids and data required' });
 
-  const allowed = ['platform', 'condition', 'edition', 'region', 'genre', 'finished', 'where_purchased', 'date_acquired', 'price_paid_currency', 'price_value_currency'];
+  const allowed = ['platform', 'condition', 'edition', 'region', 'genre', 'finished', 'where_purchased', 'date_acquired', 'price_paid_currency', 'price_value_currency', 'ownership_type', 'trophy_pct'];
   const fields = Object.keys(data).filter(k => allowed.includes(k) && data[k] !== null && data[k] !== '');
   if (!fields.length) return res.status(400).json({ error: 'No valid fields to update' });
 

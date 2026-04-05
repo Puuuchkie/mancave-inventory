@@ -124,6 +124,9 @@ function migrate() {
   add('hardware', 'for_sale',             'INTEGER DEFAULT 0');
   add('hardware', 'variant',              'TEXT');
   add('hardware', 'edition',              'TEXT');
+  add('games',    'ownership_type',       "TEXT DEFAULT 'physical'");
+  add('games',    'psn_title_id',         'TEXT');
+  add('games',    'trophy_pct',           'INTEGER');
 
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_games_title    ON games(title);

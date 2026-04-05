@@ -72,6 +72,8 @@ const GamesPage = (() => {
     }
   }
 
+  let _psnConnected = false;
+
   async function load() {
     const tbody = document.getElementById('gamesTableBody');
     tbody.innerHTML = `<tr><td colspan="10" class="loading"><div class="spinner"></div> Loading...</td></tr>`;
@@ -89,6 +91,14 @@ const GamesPage = (() => {
       updateFilterOptions();
     } catch (e) {
       toast(e.message, 'error');
+    }
+    // Show PSN buttons if connected (check once per load)
+    if (!_psnConnected) {
+      API.getPsnStatus().then(s => {
+        _psnConnected = s.connected && !s.expired;
+        document.getElementById('psnImportBtn')?.style.setProperty('display', _psnConnected ? '' : 'none');
+        document.getElementById('psnSyncBtn')?.style.setProperty('display', _psnConnected ? '' : 'none');
+      }).catch(() => {});
     }
   }
 
@@ -138,8 +148,8 @@ const GamesPage = (() => {
         <td><input type="checkbox" class="row-check" data-id="${g.id}" ${sel ? 'checked' : ''}></td>
         <td class="td-thumb">${thumb}</td>
         <td>
-          <div class="td-title">${esc(g.title)}</div>
-          <div class="td-sub">${esc(g.developer || '')}${g.release_year ? ' · ' + g.release_year : ''}</div>
+          <div class="td-title">${g.ownership_type === 'digital' ? '<span class="own-icon" title="Digital">🌐</span> ' : ''}${esc(g.title)}</div>
+          <div class="td-sub">${esc(g.developer || '')}${g.release_year ? ' · ' + g.release_year : ''}${g.trophy_pct != null ? ` · <span class="trophy-inline">🏆 ${g.trophy_pct}%</span>` : ''}</div>
         </td>
         <td>${platformBadge(g.platform)}</td>
         <td>${conditionBadge(g.condition)}</td>
@@ -189,13 +199,18 @@ const GamesPage = (() => {
             ${g.price_value != null ? `<span class="price-value">${Currency.formatWithBase(g.price_value, g.price_value_currency)}</span>` : ''}
            </div>`
         : '';
+      const trophyBar = g.trophy_pct != null
+        ? `<div class="trophy-bar-wrap" title="${g.trophy_pct}% trophies"><div class="trophy-bar-fill" style="width:${g.trophy_pct}%"></div></div>`
+        : '';
+      const ownIcon = g.ownership_type === 'digital' ? '<span class="own-icon" style="font-size:11px">🌐</span> ' : '';
       return `<div class="game-card" onclick="GamesPage.openDetail(${g.id})">
         <div class="game-card-cover">${thumb}</div>
         <div class="game-card-body">
-          <div class="game-card-title">${esc(g.title)}</div>
+          <div class="game-card-title">${ownIcon}${esc(g.title)}</div>
           <div class="game-card-meta">${platformBadge(g.platform)}${g.condition ? ' ' + conditionBadge(g.condition) : ''}</div>
           ${priceHtml}
         </div>
+        ${trophyBar}
         ${g.finished ? '<div class="game-card-check">✓</div>' : ''}
       </div>`;
     }).join('');
@@ -290,10 +305,25 @@ const GamesPage = (() => {
     renderTable();
   }
 
+  function setOwnership(type) {
+    document.getElementById('ownershipTypeInput').value = type;
+    document.querySelectorAll('#ownershipToggle .own-btn').forEach(b => b.classList.toggle('active', b.dataset.value === type));
+    // Auto-set condition to Digital when switching to digital
+    const condSel = document.getElementById('gameForm')?.elements?.condition;
+    if (condSel) {
+      if (type === 'digital' && (!condSel.value || condSel.value === 'Complete (CIB)' || condSel.value === 'Loose')) {
+        condSel.value = 'Digital';
+      } else if (type === 'physical' && condSel.value === 'Digital') {
+        condSel.value = '';
+      }
+    }
+  }
+
   function openAdd() {
     editingId = null;
     document.getElementById('gameModalTitle').textContent = 'Add Game';
     document.getElementById('gameForm').reset();
+    setOwnership('physical');
     const coverUrlEl = document.getElementById('gameCoverUrl');
     if (coverUrlEl) coverUrlEl.value = '';
     document.getElementById('gameTitleInput').value = '';
@@ -352,6 +382,7 @@ const GamesPage = (() => {
         <div class="form-section">
           <div class="form-section-title">📦 Condition</div>
           <div class="detail-grid">
+            <div class="detail-field"><span class="detail-field-label">Format</span><span class="detail-field-value">${g.ownership_type === 'digital' ? '🌐 Digital' : '💿 Physical'}</span></div>
             <div class="detail-field"><span class="detail-field-label">Condition</span><span class="detail-field-value">${conditionBadge(g.condition)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Region</span><span class="detail-field-value">${regionBadge(g.region)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Quantity</span><span class="detail-field-value">${g.quantity}</span></div>
@@ -368,6 +399,7 @@ const GamesPage = (() => {
           <div class="form-section-title">🎯 Personal</div>
           <div class="detail-grid">
             <div class="detail-field"><span class="detail-field-label">Finished / Played</span><span class="detail-field-value">${bool(g.finished) ? '✓ Yes' : '— No'}</span></div>
+            ${g.trophy_pct != null ? `<div class="detail-field"><span class="detail-field-label">Trophy Progress</span><span class="detail-field-value"><span class="trophy-inline">🏆 ${g.trophy_pct}%</span></span></div>` : ''}
             <div class="detail-field"><span class="detail-field-label">Personal Rating</span><span class="detail-field-value">${starRating(g.personal_rating)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Date Acquired</span><span class="detail-field-value">${fmtDate(g.date_acquired)}</span></div>
             <div class="detail-field"><span class="detail-field-label">Where Purchased</span><span class="detail-field-value">${esc(g.where_purchased) || '—'}</span></div>
@@ -415,6 +447,7 @@ const GamesPage = (() => {
     set('remarks', g.remarks);
     renderStars(g.personal_rating || 0);
     document.getElementById('gameForm').dataset.rating = g.personal_rating || 0;
+    setOwnership(g.ownership_type || 'physical');
   }
 
   function renderStars(n) {
@@ -458,14 +491,16 @@ const GamesPage = (() => {
       date_acquired: f.elements.date_acquired.value || null,
       where_purchased: f.elements.where_purchased.value.trim(),
       remarks: f.elements.remarks.value.trim(),
+      ownership_type: f.elements.ownership_type?.value || 'physical',
     };
 
     if (!data.title || !data.platform) {
       toast('Title and platform are required', 'error'); return;
     }
-    if (!data.condition) {
+    if (!data.condition && data.ownership_type !== 'digital') {
       toast('Condition is required', 'error'); return;
     }
+    if (data.ownership_type === 'digital' && !data.condition) data.condition = 'Digital';
     if (!data.edition) {
       toast('Edition / Print is required', 'error'); return;
     }
@@ -673,6 +708,92 @@ const GamesPage = (() => {
     toast(`Updated ${updated}${failed ? `, ${failed} failed` : ''} values`, updated > 0 ? 'success' : 'error');
     if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh All Values'; }
     load();
+  }
+
+  // ── PSN Import ────────────────────────────────────────────────────────────────
+  let _psnImportGames = [];
+
+  async function openPsnImport() {
+    document.getElementById('psnImportLoading').style.display = '';
+    document.getElementById('psnImportContent').style.display = 'none';
+    document.getElementById('psnImportError').style.display = 'none';
+    document.getElementById('psnImportConfirmBtn').style.display = 'none';
+    openModal('psnImportModal');
+
+    try {
+      const { games, totalPlayed } = await API.getPsnImportPreview();
+      _psnImportGames = games;
+
+      const newCount = games.filter(g => !g.alreadyInLibrary).length;
+      document.getElementById('psnImportMeta').textContent =
+        `${games.length} games found · ${newCount} not in library · ${games.length - newCount} already added`;
+
+      document.getElementById('psnImportList').innerHTML = games.map((g, i) => {
+        const img = g.imageUrl
+          ? `<img src="${esc(g.imageUrl)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0">`
+          : `<div style="width:48px;height:48px;background:var(--bg-elevated);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">🎮</div>`;
+        const trophyBadge = g.trophyPct != null
+          ? `<span class="trophy-inline" style="font-size:11px">🏆 ${g.trophyPct}%</span>` : '';
+        const serviceTag = g.service === 'ps_plus' ? '<span style="font-size:10px;background:var(--accent-dim);color:var(--accent);padding:1px 5px;border-radius:3px;margin-left:4px">PS+</span>' : '';
+        const alreadyTag = g.alreadyInLibrary ? '<span style="font-size:10px;color:var(--text-muted);margin-left:4px">in library</span>' : '';
+        return `<label class="psn-import-row ${g.alreadyInLibrary ? 'psn-already' : ''}">
+          <input type="checkbox" class="psn-import-check" data-index="${i}" ${g.alreadyInLibrary ? '' : 'checked'} ${g.alreadyInLibrary ? 'disabled' : ''}>
+          ${img}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.name)}${serviceTag}${alreadyTag}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${esc(g.platform)} ${trophyBadge}</div>
+          </div>
+        </label>`;
+      }).join('');
+
+      document.getElementById('psnImportLoading').style.display = 'none';
+      document.getElementById('psnImportContent').style.display = '';
+      if (newCount > 0) {
+        const btn = document.getElementById('psnImportConfirmBtn');
+        btn.textContent = `Import ${newCount} Games`;
+        btn.style.display = '';
+      }
+    } catch (err) {
+      document.getElementById('psnImportLoading').style.display = 'none';
+      document.getElementById('psnImportError').style.display = '';
+      document.getElementById('psnImportError').textContent = '✕ ' + err.message;
+    }
+  }
+
+  function closePsnImport() {
+    closeModal('psnImportModal');
+  }
+
+  function psnSelectAll(checked) {
+    document.querySelectorAll('.psn-import-check:not([disabled])').forEach(cb => cb.checked = checked);
+  }
+
+  async function confirmPsnImport() {
+    const selected = [...document.querySelectorAll('.psn-import-check:checked:not([disabled])')].map(cb => _psnImportGames[parseInt(cb.dataset.index)]);
+    if (!selected.length) { toast('No games selected', 'error'); return; }
+    const btn = document.getElementById('psnImportConfirmBtn');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    try {
+      const r = await API.importPsnGames(selected);
+      toast(`Imported ${r.imported} games from PSN!`, 'success');
+      closeModal('psnImportModal');
+      load();
+      App.loadSidebarCounts();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { btn.disabled = false; }
+  }
+
+  async function syncTrophies() {
+    const btn = document.getElementById('psnSyncBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '🏆 Syncing…'; }
+    try {
+      const r = await API.syncPsnTrophies();
+      let msg = `Synced ${r.synced} trophy score${r.synced !== 1 ? 's' : ''}`;
+      if (r.autoFinished) msg += ` · ${r.autoFinished} auto-marked finished`;
+      toast(msg, 'success');
+      load();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '🏆 Sync Trophies'; } }
   }
 
   function clearEbayStatus() {
@@ -904,5 +1025,5 @@ const GamesPage = (() => {
     }
   }
 
-  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker, toggleSelect, clearSelection, batchDelete, batchEdit };
+  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker, toggleSelect, clearSelection, batchDelete, batchEdit, setOwnership, openPsnImport, closePsnImport, psnSelectAll, confirmPsnImport, syncTrophies };
 })();

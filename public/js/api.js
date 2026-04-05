@@ -97,9 +97,11 @@ const API = {
   scanGame:      (image, mimeType)      => API.request('POST', '/api/scan', { image, mimeType }),
 
   // PSN
-  getPsnStatus:     ()        => API.request('GET',    '/api/psn/status'),
-  connectPsn:       (npsso)   => API.request('POST',   '/api/psn/connect', { npsso }),
-  disconnectPsn:    ()        => API.request('DELETE', '/api/psn/disconnect'),
-  getPsnProfile:    ()        => API.request('GET',    '/api/psn/profile'),
-  getPsnTrophies:   ()        => API.request('GET',    '/api/psn/trophies'),
+  getPsnStatus:        ()        => API.request('GET',    '/api/psn/status'),
+  connectPsn:          (npsso)   => API.request('POST',   '/api/psn/connect', { npsso }),
+  disconnectPsn:       ()        => API.request('DELETE', '/api/psn/disconnect'),
+  getPsnTrophySummary: ()        => API.request('GET',    '/api/psn/trophy-summary'),
+  getPsnImportPreview: ()        => API.request('GET',    '/api/psn/import-preview'),
+  importPsnGames:      (games)   => API.request('POST',   '/api/psn/import', { games }),
+  syncPsnTrophies:     ()        => API.request('POST',   '/api/psn/sync-trophies'),
 };

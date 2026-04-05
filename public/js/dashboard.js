@@ -8,6 +8,24 @@ const Dashboard = (() => {
         API.getForSaleStats(),
       ]);
 
+      // PSN trophy summary — silently skip if not connected
+      API.getPsnStatus().then(s => {
+        if (!s.connected || s.expired) return;
+        return API.getPsnTrophySummary();
+      }).then(summary => {
+        if (!summary) return;
+        const card = document.getElementById('dash-psn-card');
+        if (card) card.style.display = '';
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('psn-level', summary.trophyLevel);
+        set('psn-platinum', summary.earnedTrophies.platinum);
+        set('psn-gold', summary.earnedTrophies.gold);
+        set('psn-silver', summary.earnedTrophies.silver);
+        set('psn-bronze', summary.earnedTrophies.bronze);
+        const bar = document.getElementById('psn-level-bar');
+        if (bar) bar.style.width = (summary.progress || 0) + '%';
+      }).catch(() => {});
+
       const totalPaid = (gStats.total_paid || 0) + (hStats.total_paid || 0);
       const totalValue = (gStats.total_value || 0) + (hStats.total_value || 0);
 

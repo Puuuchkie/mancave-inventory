@@ -129,6 +129,44 @@
         </div>
       </div>
 
+      <!-- PSN Stats (only shown when connected) -->
+      <div id="dash-psn-card" style="display:none;margin-bottom:20px">
+        <div class="dash-card" style="max-width:100%">
+          <div class="dash-card-title" style="margin-bottom:16px">PlayStation Network</div>
+          <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+            <div style="text-align:center;min-width:80px">
+              <div id="psn-level" style="font-size:32px;font-weight:800;color:var(--accent)">—</div>
+              <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Trophy Level</div>
+              <div class="bar-track" style="margin-top:6px;height:4px">
+                <div class="bar-fill" id="psn-level-bar" style="width:0%;background:var(--accent)"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap">
+              <div class="psn-trophy-stat">
+                <span class="psn-trophy-icon" style="color:#d4af37">🏆</span>
+                <span id="psn-platinum" class="psn-trophy-count">—</span>
+                <span class="psn-trophy-label">Platinum</span>
+              </div>
+              <div class="psn-trophy-stat">
+                <span class="psn-trophy-icon" style="color:#ffd700">🥇</span>
+                <span id="psn-gold" class="psn-trophy-count">—</span>
+                <span class="psn-trophy-label">Gold</span>
+              </div>
+              <div class="psn-trophy-stat">
+                <span class="psn-trophy-icon" style="color:#c0c0c0">🥈</span>
+                <span id="psn-silver" class="psn-trophy-count">—</span>
+                <span class="psn-trophy-label">Silver</span>
+              </div>
+              <div class="psn-trophy-stat">
+                <span class="psn-trophy-icon" style="color:#cd7f32">🥉</span>
+                <span id="psn-bronze" class="psn-trophy-count">—</span>
+                <span class="psn-trophy-label">Bronze</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="dashboard-grid">
         <div class="dash-card">
           <div class="dash-card-title">Games by Platform</div>
@@ -160,6 +198,8 @@
         <span class="filter-chip" data-finished-filter="false">○ Unfinished</span>
         <span class="filter-chip" id="filterUnpricedChip">$ Unpriced</span>
         <div class="filters-right">
+          <button class="btn btn-secondary" id="psnImportBtn" style="display:none" onclick="GamesPage.openPsnImport()">🎮 PSN Import</button>
+          <button class="btn btn-secondary" id="psnSyncBtn" style="display:none" onclick="GamesPage.syncTrophies()">🏆 Sync Trophies</button>
           <button class="btn btn-secondary" id="refreshAllGameValues" onclick="GamesPage.refreshAllValues()">↻ Refresh All Values</button>
         </div>
       </div>
@@ -611,6 +651,37 @@
       </div>
     </div>
 
+    <!-- ===== PSN IMPORT MODAL ===== -->
+    <div class="modal-overlay" id="psnImportModal">
+      <div class="modal" style="max-width:780px;max-height:85vh;display:flex;flex-direction:column">
+        <div class="modal-header">
+          <h2 class="modal-title">PSN Import</h2>
+          <button class="modal-close" onclick="GamesPage.closePsnImport()">✕</button>
+        </div>
+        <div class="modal-body" style="flex:1;overflow-y:auto;padding-bottom:0">
+          <div id="psnImportLoading" style="text-align:center;padding:40px">
+            <div class="spinner" style="margin:0 auto 12px"></div>
+            <div style="color:var(--text-muted)">Loading your PSN library…</div>
+          </div>
+          <div id="psnImportContent" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:13px;color:var(--text-muted)" id="psnImportMeta"></div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary btn-sm" onclick="GamesPage.psnSelectAll(true)">Select All New</button>
+                <button class="btn btn-secondary btn-sm" onclick="GamesPage.psnSelectAll(false)">Deselect All</button>
+              </div>
+            </div>
+            <div id="psnImportList" class="psn-import-list"></div>
+          </div>
+          <div id="psnImportError" style="display:none;padding:20px;color:var(--red);font-size:14px"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="GamesPage.closePsnImport()">Cancel</button>
+          <button class="btn btn-primary" id="psnImportConfirmBtn" style="display:none" onclick="GamesPage.confirmPsnImport()">Import Selected</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== SCAN PAGE ===== -->
     <section class="page" id="page-scan">
       <!-- Shown when ANTHROPIC_API_KEY is not configured -->
@@ -916,7 +987,15 @@
         <div class="form-section">
           <div class="form-section-title">📦 Condition & Copy Details</div>
           <div class="form-grid">
-            <div class="form-group">
+            <div class="form-group span-2">
+              <label class="form-label">Format</label>
+              <div class="ownership-toggle" id="ownershipToggle">
+                <button type="button" class="own-btn active" data-value="physical" onclick="GamesPage.setOwnership('physical')">💿 Physical</button>
+                <button type="button" class="own-btn" data-value="digital" onclick="GamesPage.setOwnership('digital')">🌐 Digital</button>
+              </div>
+              <input type="hidden" name="ownership_type" id="ownershipTypeInput" value="physical">
+            </div>
+            <div class="form-group" id="gameConditionGroup">
               <label class="form-label">Condition *</label>
               <select class="form-control" name="condition">
                 <option value="">— Select —</option>
@@ -930,6 +1009,7 @@
                 <option>Manual Only</option>
                 <option>Graded</option>
                 <option>Poor / Damaged</option>
+                <option>Digital</option>
               </select>
             </div>
             <div class="form-group">
