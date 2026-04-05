@@ -683,6 +683,27 @@
       </div>
     </div>
 
+    <!-- ===== TROPHY MATCH WIZARD ===== -->
+    <div class="modal-overlay" id="trophyMatchModal" style="display:none">
+      <div class="modal" style="max-width:620px;max-height:90vh;display:flex;flex-direction:column">
+        <div class="modal-header">
+          <h2 class="modal-title">Match Trophies</h2>
+          <button class="modal-close" onclick="GamesPage.closeTrophyMatch()">✕</button>
+        </div>
+        <div class="modal-body" style="flex:1;overflow-y:auto">
+          <p id="trophyMatchStepLabel" style="font-size:13px;color:var(--text-muted);margin:0 0 14px"></p>
+          <div id="trophyMatchPsnGame" class="trophy-match-psn"></div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">Match to a game in your library:</div>
+          <input type="text" id="trophyMatchSearch" class="form-control" placeholder="Search library…" oninput="GamesPage.filterTrophyMatchList()" style="margin-bottom:10px">
+          <div id="trophyMatchList" class="trophy-match-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="GamesPage.trophyMatchSkip()">Skip</button>
+          <button class="btn btn-primary" id="trophyMatchLinkBtn" disabled onclick="GamesPage.trophyMatchLink()">Link Game</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== SCAN PAGE ===== -->
     <section class="page" id="page-scan">
       <!-- Shown when ANTHROPIC_API_KEY is not configured -->

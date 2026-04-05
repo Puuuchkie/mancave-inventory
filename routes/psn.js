@@ -254,20 +254,22 @@ router.post('/import', (req, res) => {
 });
 
 // ── POST /api/psn/sync-trophies ──────────────────────────────────────────────
-// Fetch trophy progress for all titles and update matching games in DB
+// Fetch trophy progress for all titles and update matching games in DB.
+// Returns { synced, autoFinished, unmatched } where unmatched is a list of
+// PSN trophy titles that have no corresponding game in the library.
 router.post('/sync-trophies', async (req, res) => {
   try {
     const { getUserTitles } = await getPsnApi();
     const accessToken = await getAccessToken();
     const trophyTitles = await fetchAllPages(getUserTitles, accessToken, 'trophyTitles');
 
-    // Build lookup: npCommunicationId → progress
-    const byPsnId = new Map(trophyTitles.map(t => [t.npCommunicationId, t.progress]));
-    // Build lookup: normTitle+platform → progress
+    // Build lookup: npCommunicationId → trophy entry
+    const byPsnId = new Map(trophyTitles.map(t => [t.npCommunicationId, t]));
+    // Build lookup: normTitle+platform → trophy entry
     const byTitle = new Map();
     for (const t of trophyTitles) {
       const platform = mapPsnPlatform(t.trophyTitlePlatform);
-      if (platform) byTitle.set(normTitle(t.trophyTitleName) + '|' + platform, { progress: t.progress, id: t.npCommunicationId });
+      if (platform) byTitle.set(normTitle(t.trophyTitleName) + '|' + platform, t);
     }
 
     // Get all PS4/PS5/PS3/Vita/PSP games from DB
@@ -277,26 +279,31 @@ router.post('/sync-trophies', async (req, res) => {
 
     const updateTrophy = db.prepare("UPDATE games SET trophy_pct = ?, psn_title_id = ?, finished = ?, updated_at = datetime('now') WHERE id = ?");
 
+    // Track which PSN IDs are matched (either already stored or fuzzy-matched now)
+    const matchedPsnIds = new Set(psGames.filter(g => g.psn_title_id).map(g => g.psn_title_id));
+
     let synced = 0, autoFinished = 0;
     const syncTx = db.transaction(() => {
       for (const g of psGames) {
-        let progress = null;
+        let entry = null;
         let psnId = g.psn_title_id;
 
         // 1. Match by stored PSN ID
         if (psnId && byPsnId.has(psnId)) {
-          progress = byPsnId.get(psnId);
+          entry = byPsnId.get(psnId);
         } else {
           // 2. Fuzzy match by title + platform
           const key = normTitle(g.title) + '|' + g.platform;
           const match = byTitle.get(key);
           if (match != null) {
-            progress = match.progress;
-            psnId = match.id;
+            entry = match;
+            psnId = match.npCommunicationId;
+            matchedPsnIds.add(psnId);
           }
         }
 
-        if (progress == null) continue;
+        if (!entry) continue;
+        const progress = entry.progress;
         if (progress === g.trophy_pct && psnId === g.psn_title_id) continue; // no change
 
         const newFinished = progress === 100 ? 1 : g.finished;
@@ -307,12 +314,48 @@ router.post('/sync-trophies', async (req, res) => {
     });
     syncTx();
 
-    logger.success('psn', `Trophy sync: ${synced} updated, ${autoFinished} auto-finished`);
-    res.json({ synced, autoFinished });
+    // Build list of PSN trophy titles with no matching library game
+    const unmatched = trophyTitles
+      .filter(t => {
+        if (!t.npCommunicationId) return false;
+        if (matchedPsnIds.has(t.npCommunicationId)) return false;
+        const platform = mapPsnPlatform(t.trophyTitlePlatform);
+        return !!platform; // only include titles on supported PS platforms
+      })
+      .map(t => ({
+        npCommunicationId: t.npCommunicationId,
+        trophyTitleName:   t.trophyTitleName,
+        platform:          mapPsnPlatform(t.trophyTitlePlatform),
+        progress:          t.progress ?? 0,
+        iconUrl:           t.trophyTitleIconUrl || null,
+        earnedTrophies:    t.earnedTrophies  || null,
+        definedTrophies:   t.definedTrophies || null,
+      }));
+
+    logger.success('psn', `Trophy sync: ${synced} updated, ${autoFinished} auto-finished, ${unmatched.length} unmatched`);
+    res.json({ synced, autoFinished, unmatched });
   } catch (err) {
     logger.error('psn', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── POST /api/psn/link-trophy ────────────────────────────────────────────────
+// Manually link a PSN trophy title to a library game (from the match wizard)
+router.post('/link-trophy', (req, res) => {
+  const { npCommunicationId, gameId, progress } = req.body;
+  if (!npCommunicationId || !gameId) {
+    return res.status(400).json({ error: 'npCommunicationId and gameId are required' });
+  }
+  const game = db.prepare('SELECT id, finished FROM games WHERE id = ?').get(gameId);
+  if (!game) return res.status(404).json({ error: 'Game not found' });
+
+  const newFinished = progress === 100 ? 1 : game.finished;
+  db.prepare("UPDATE games SET psn_title_id = ?, trophy_pct = ?, finished = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(npCommunicationId, progress ?? null, newFinished, gameId);
+
+  logger.success('psn', `Linked trophy ${npCommunicationId} → game id ${gameId} (${progress}%)`);
+  res.json({ success: true });
 });
 
 module.exports = router;

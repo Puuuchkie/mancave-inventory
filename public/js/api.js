@@ -104,4 +104,5 @@ const API = {
   getPsnImportPreview: ()        => API.request('GET',    '/api/psn/import-preview'),
   importPsnGames:      (games)   => API.request('POST',   '/api/psn/import', { games }),
   syncPsnTrophies:     ()        => API.request('POST',   '/api/psn/sync-trophies'),
+  linkPsnTrophy:       (data)    => API.request('POST',   '/api/psn/link-trophy', data),
 };

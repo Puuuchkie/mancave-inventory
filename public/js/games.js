@@ -73,6 +73,10 @@ const GamesPage = (() => {
   }
 
   let _psnConnected = false;
+  let _trophyMatchQueue = [];
+  let _trophyMatchIndex = 0;
+  let _trophyMatchSelectedId = null;
+  let _trophyMatchPsGames = [];
 
   async function load() {
     const tbody = document.getElementById('gamesTableBody');
@@ -795,10 +799,141 @@ const GamesPage = (() => {
       const r = await API.syncPsnTrophies();
       let msg = `Synced ${r.synced} trophy score${r.synced !== 1 ? 's' : ''}`;
       if (r.autoFinished) msg += ` · ${r.autoFinished} auto-marked finished`;
-      toast(msg, 'success');
+      if (r.unmatched?.length) msg += ` · ${r.unmatched.length} unmatched`;
+      toast(msg, r.unmatched?.length ? 'info' : 'success');
       load();
+      if (r.unmatched?.length) {
+        openTrophyMatch(r.unmatched);
+      }
     } catch (e) { toast(e.message, 'error'); }
     finally { if (btn) { btn.disabled = false; btn.textContent = '🏆 Sync Trophies'; } }
+  }
+
+  function openTrophyMatch(unmatched) {
+    _trophyMatchQueue = unmatched;
+    _trophyMatchIndex = 0;
+    _trophyMatchSelectedId = null;
+    // Collect PS library games for the picker
+    _trophyMatchPsGames = allGames.filter(g =>
+      (g.platform || '').startsWith('PlayStation') || (g.platform || '').startsWith('PS')
+    );
+    document.getElementById('trophyMatchModal').style.display = '';
+    renderTrophyMatchStep();
+  }
+
+  function renderTrophyMatchStep() {
+    const item = _trophyMatchQueue[_trophyMatchIndex];
+    const total = _trophyMatchQueue.length;
+    _trophyMatchSelectedId = null;
+
+    document.getElementById('trophyMatchStepLabel').textContent =
+      `Trophy title ${_trophyMatchIndex + 1} of ${total} — these titles have trophy data on PSN but no matching game in your library.`;
+
+    // PSN game info block
+    const pct = item.progress ?? 0;
+    const iconHtml = item.iconUrl
+      ? `<img src="${esc(item.iconUrl)}" class="trophy-match-psn-cover" alt="">`
+      : `<div class="trophy-match-psn-placeholder">🏆</div>`;
+    const trophyCountHtml = item.earnedTrophies
+      ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">`
+        + (item.earnedTrophies.platinum ? `🏅 ${item.earnedTrophies.platinum}  ` : '')
+        + (item.earnedTrophies.gold     ? `🥇 ${item.earnedTrophies.gold}  `     : '')
+        + (item.earnedTrophies.silver   ? `🥈 ${item.earnedTrophies.silver}  `   : '')
+        + (item.earnedTrophies.bronze   ? `🥉 ${item.earnedTrophies.bronze}`     : '')
+        + `</div>`
+      : '';
+    document.getElementById('trophyMatchPsnGame').innerHTML = `
+      ${iconHtml}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:15px">${esc(item.trophyTitleName)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${esc(item.platform)}</div>
+        <div style="margin-top:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="trophy-bar-wrap" style="flex:1;height:8px;border-radius:4px;background:var(--surface-3);overflow:hidden">
+              <div class="trophy-bar-fill" style="width:${pct}%;height:100%;background:var(--gold,#f0a500);border-radius:4px"></div>
+            </div>
+            <span style="font-size:12px;font-weight:600">${pct}%</span>
+          </div>
+          ${trophyCountHtml}
+        </div>
+      </div>`;
+
+    document.getElementById('trophyMatchSearch').value = '';
+    document.getElementById('trophyMatchLinkBtn').disabled = true;
+    renderTrophyMatchList(_trophyMatchPsGames);
+  }
+
+  function filterTrophyMatchList() {
+    const q = (document.getElementById('trophyMatchSearch').value || '').toLowerCase();
+    const filtered = q
+      ? _trophyMatchPsGames.filter(g => g.title.toLowerCase().includes(q) || (g.platform || '').toLowerCase().includes(q))
+      : _trophyMatchPsGames;
+    renderTrophyMatchList(filtered);
+  }
+
+  function renderTrophyMatchList(games) {
+    const el = document.getElementById('trophyMatchList');
+    if (!games.length) {
+      el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">No matching games in library</div>`;
+      return;
+    }
+    el.innerHTML = games.map(g => {
+      const thumb = g.cover_url
+        ? `<img src="${esc(g.cover_url)}" class="trophy-match-row-thumb" alt="" loading="lazy">`
+        : `<div class="trophy-match-row-placeholder">🎮</div>`;
+      const selected = _trophyMatchSelectedId === g.id;
+      const trophyTag = g.trophy_pct != null ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px">🏆 ${g.trophy_pct}%</span>` : '';
+      return `<div class="trophy-match-row${selected ? ' selected' : ''}" onclick="GamesPage.selectTrophyMatchGame(${g.id})">
+        ${thumb}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.title)}${trophyTag}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${esc(g.platform || '')}${g.condition ? ' · ' + esc(g.condition) : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function selectTrophyMatchGame(id) {
+    _trophyMatchSelectedId = id;
+    document.getElementById('trophyMatchLinkBtn').disabled = false;
+    // Re-render list to update selected highlight
+    filterTrophyMatchList();
+  }
+
+  async function trophyMatchLink() {
+    if (!_trophyMatchSelectedId) return;
+    const item = _trophyMatchQueue[_trophyMatchIndex];
+    try {
+      await API.linkPsnTrophy({ npCommunicationId: item.npCommunicationId, gameId: _trophyMatchSelectedId, progress: item.progress });
+      toast(`Linked "${item.trophyTitleName}"`, 'success');
+      // Update the local allGames so subsequent steps reflect fresh state
+      const g = allGames.find(g => g.id === _trophyMatchSelectedId);
+      if (g) { g.psn_title_id = item.npCommunicationId; g.trophy_pct = item.progress; }
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+    _trophyMatchAdvance();
+  }
+
+  function trophyMatchSkip() {
+    _trophyMatchAdvance();
+  }
+
+  function _trophyMatchAdvance() {
+    _trophyMatchIndex++;
+    if (_trophyMatchIndex >= _trophyMatchQueue.length) {
+      closeTrophyMatch();
+      load();
+    } else {
+      renderTrophyMatchStep();
+    }
+  }
+
+  function closeTrophyMatch() {
+    document.getElementById('trophyMatchModal').style.display = 'none';
+    _trophyMatchQueue = [];
+    _trophyMatchIndex = 0;
+    _trophyMatchSelectedId = null;
   }
 
   function clearEbayStatus() {
@@ -1033,5 +1168,5 @@ const GamesPage = (() => {
     }
   }
 
-  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker, toggleSelect, clearSelection, batchDelete, batchEdit, setOwnership, openPsnImport, closePsnImport, psnSelectAll, confirmPsnImport, syncTrophies };
+  return { init, load, openAdd, openEdit, openDetail, deleteGame, refreshValue, refreshAllValues, openGamePicker, closeGamePicker, toggleSelect, clearSelection, batchDelete, batchEdit, setOwnership, openPsnImport, closePsnImport, psnSelectAll, confirmPsnImport, syncTrophies, openTrophyMatch, closeTrophyMatch, filterTrophyMatchList, selectTrophyMatchGame, trophyMatchLink, trophyMatchSkip };
 })();
