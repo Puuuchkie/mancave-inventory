@@ -99,7 +99,11 @@ router.get('/status', (req, res) => {
   const tokens = getStoredTokens();
   const hint = db.prepare("SELECT value FROM settings WHERE key = 'psn_npsso_hint'").get();
   if (!tokens) return res.json({ connected: false });
-  const expired = !tokens.expiresAt || Date.now() > tokens.expiresAt;
+  // Only flag expired when there is no refresh token to fall back on.
+  // The access token itself expires every ~1 hour but getAccessToken() will
+  // silently refresh it using the refresh token, so the UI should not show
+  // "session expired" just because the short-lived access token aged out.
+  const expired = !tokens.refreshToken && (!tokens.expiresAt || Date.now() > tokens.expiresAt);
   res.json({ connected: true, expired, hint: hint?.value || null });
 });
 
