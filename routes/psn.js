@@ -54,6 +54,20 @@ function mapPsnPlatform(psnPlatform, category) {
   return null;
 }
 
+// Paginate a PSN list endpoint — PSN enforces max limit=200 per call
+async function fetchAllPages(fn, auth, itemsKey, pageSize = 200) {
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const res = await fn({ accessToken: auth }, 'me', { limit: pageSize, offset });
+    const items = res[itemsKey] || [];
+    all.push(...items);
+    offset += items.length;
+    if (offset >= res.totalItemCount || !items.length) break;
+  }
+  return all;
+}
+
 function normTitle(s) {
   return String(s || '').toLowerCase().replace(/[®™©]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -116,15 +130,15 @@ router.get('/import-preview', async (req, res) => {
     const { getUserPlayedGames, getUserTitles } = await getPsnApi();
     const accessToken = await getAccessToken();
 
-    // Fetch up to 800 played games and trophy titles in parallel
-    const [playedRes, trophyRes] = await Promise.all([
-      getUserPlayedGames({ accessToken }, 'me', { limit: 800 }),
-      getUserTitles({ accessToken }, 'me', { limit: 800 }),
+    // Paginate both lists (PSN max 200 per call)
+    const [playedTitles, trophyTitles] = await Promise.all([
+      fetchAllPages(getUserPlayedGames, accessToken, 'titles'),
+      fetchAllPages(getUserTitles,      accessToken, 'trophyTitles'),
     ]);
 
     // Build trophy lookup map: normTitle → trophy entry
     const trophyMap = new Map();
-    for (const t of trophyRes.trophyTitles || []) {
+    for (const t of trophyTitles) {
       trophyMap.set(normTitle(t.trophyTitleName), t);
     }
 
@@ -136,7 +150,7 @@ router.get('/import-preview', async (req, res) => {
     const games = [];
     const seen = new Set();
 
-    for (const pg of playedRes.titles || []) {
+    for (const pg of playedTitles) {
       const platform = mapPsnPlatform(null, pg.category);
       if (!platform) continue; // skip non-PS platforms
 
@@ -191,7 +205,7 @@ router.get('/import-preview', async (req, res) => {
       return new Date(b.lastPlayedDateTime) - new Date(a.lastPlayedDateTime);
     });
 
-    res.json({ games, totalPlayed: playedRes.totalItemCount });
+    res.json({ games, totalPlayed: playedTitles.length });
   } catch (err) {
     logger.error('psn', err.message);
     res.status(500).json({ error: err.message });
@@ -241,9 +255,7 @@ router.post('/sync-trophies', async (req, res) => {
   try {
     const { getUserTitles } = await getPsnApi();
     const accessToken = await getAccessToken();
-    const trophyRes = await getUserTitles({ accessToken }, 'me', { limit: 800 });
-
-    const trophyTitles = trophyRes.trophyTitles || [];
+    const trophyTitles = await fetchAllPages(getUserTitles, accessToken, 'trophyTitles');
 
     // Build lookup: npCommunicationId → progress
     const byPsnId = new Map(trophyTitles.map(t => [t.npCommunicationId, t.progress]));

@@ -257,8 +257,14 @@ router.post('/fetch-url', async (req, res) => {
       return res.status(404).json({ error: 'Could not read data from that page. Make sure the URL points to a specific game.' });
     }
 
-    logger.success('pricecharting', `URL fetch: "${title}" / "${consoleName}" → ${priceId}: $${price}`);
-    res.json({ price, title, consoleName, allPrices, url });
+    // Infer region from the URL slug — more reliable than HTML text
+    const urlSlug = parsedUrl.pathname.split('/')[2] || '';
+    let region = 'NTSC (USA)';
+    if (urlSlug.startsWith('pal-'))    region = 'PAL (Europe)';
+    if (urlSlug.startsWith('japan-')) region = 'NTSC-J (Japan)';
+
+    logger.success('pricecharting', `URL fetch: "${title}" / "${consoleName}" → ${priceId}: $${price} [${region}]`);
+    res.json({ price, title, consoleName, region, allPrices, url });
   } catch (err) {
     logger.error('pricecharting', err.message, `url="${url}"`);
     res.status(500).json({ error: err.message });

@@ -326,6 +326,8 @@ const GamesPage = (() => {
     setOwnership('physical');
     const coverUrlEl = document.getElementById('gameCoverUrl');
     if (coverUrlEl) coverUrlEl.value = '';
+    const regionOverrideEl = document.getElementById('gameRegionOverride');
+    if (regionOverrideEl) regionOverrideEl.value = '';
     document.getElementById('gameTitleInput').value = '';
     document.getElementById('gameTitleResults').innerHTML = '';
     const edSel = document.getElementById('gameEditionSelect');
@@ -443,6 +445,8 @@ const GamesPage = (() => {
     Currency.populateSelect(document.getElementById('gameValueCurrency'), g.price_value_currency);
     const statusEl = document.getElementById('gamePcUrlStatus');
     if (statusEl) statusEl.style.display = 'none';
+    const regionOverrideEl = document.getElementById('gameRegionOverride');
+    if (regionOverrideEl) regionOverrideEl.value = '';  // clear any prior URL-inferred region on edit
     set('date_acquired', g.date_acquired); set('where_purchased', g.where_purchased);
     set('remarks', g.remarks);
     renderStars(g.personal_rating || 0);
@@ -473,7 +477,7 @@ const GamesPage = (() => {
       platform,
       condition: f.elements.condition.value,
       edition: f.elements.edition.value.trim(),
-      region: regionFromPlatform(platform),
+      region: f.elements.region_override?.value || regionFromPlatform(platform),
       quantity: parseInt(f.elements.quantity.value) || 1,
       genre: f.elements.genre.value,
       developer: f.elements.developer.value.trim(),
@@ -844,6 +848,9 @@ const GamesPage = (() => {
               platSel.dispatchEvent(new Event('change'));
             }
           }
+          // Store region inferred from URL path (overrides regionFromPlatform at save time)
+          const regionOverrideEl = document.getElementById('gameRegionOverride');
+          if (regionOverrideEl && r.region) regionOverrideEl.value = r.region;
           // Fill price_value
           if (r.price != null) {
             const pvEl = document.getElementById('gamePriceValue');
