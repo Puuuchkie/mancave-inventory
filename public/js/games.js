@@ -126,7 +126,7 @@ const GamesPage = (() => {
 
     if (!sorted.length) {
       tbody.innerHTML = `
-        <tr><td colspan="11">
+        <tr><td colspan="12">
           <div class="empty-state">
             <div class="empty-icon">🎮</div>
             <p>No games found. Add your first game to get started!</p>
@@ -148,13 +148,14 @@ const GamesPage = (() => {
         <td><input type="checkbox" class="row-check" data-id="${g.id}" ${sel ? 'checked' : ''}></td>
         <td class="td-thumb">${thumb}</td>
         <td>
-          <div class="td-title">${g.ownership_type === 'digital' ? '<span class="own-icon" title="Digital">🌐</span> ' : ''}${esc(g.title)}</div>
+          <div class="td-title">${esc(g.title)}</div>
           <div class="td-sub">${esc(g.developer || '')}${g.release_year ? ' · ' + g.release_year : ''}${g.trophy_pct != null ? ` · <span class="trophy-inline">🏆 ${g.trophy_pct}%</span>` : ''}</div>
         </td>
         <td>${platformBadge(g.platform)}</td>
         <td>${conditionBadge(g.condition)}</td>
         <td>${editionBadge(g.edition)}</td>
         <td>${regionBadge(g.region)}</td>
+        <td>${g.ownership_type === 'digital' ? 'Digital' : 'Physical'}</td>
         <td>${g.quantity || 1}</td>
         <td>${g.price_paid != null ? `<span class="price-paid">${Currency.formatWithBase(g.price_paid, g.price_paid_currency)}</span>` : '—'}</td>
         <td>${g.price_value != null ? `<span class="price-value">${Currency.formatWithBase(g.price_value, g.price_value_currency)}</span>${diff ? '<br>' + diff : ''}` : '—'}</td>
