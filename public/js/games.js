@@ -795,18 +795,21 @@ const GamesPage = (() => {
   async function syncTrophies() {
     const btn = document.getElementById('psnSyncBtn');
     if (btn) { btn.disabled = true; btn.textContent = '🏆 Syncing…'; }
+    let unmatched = [];
     try {
       const r = await API.syncPsnTrophies();
+      unmatched = Array.isArray(r.unmatched) ? r.unmatched : [];
       let msg = `Synced ${r.synced} trophy score${r.synced !== 1 ? 's' : ''}`;
       if (r.autoFinished) msg += ` · ${r.autoFinished} auto-marked finished`;
-      if (r.unmatched?.length) msg += ` · ${r.unmatched.length} unmatched`;
-      toast(msg, r.unmatched?.length ? 'info' : 'success');
-      load();
-      if (r.unmatched?.length) {
-        openTrophyMatch(r.unmatched);
-      }
-    } catch (e) { toast(e.message, 'error'); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = '🏆 Sync Trophies'; } }
+      if (unmatched.length) msg += ` · ${unmatched.length} unmatched`;
+      toast(msg, unmatched.length ? 'info' : 'success');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🏆 Sync Trophies'; }
+    }
+    load();
+    if (unmatched.length) openTrophyMatch(unmatched);
   }
 
   function openTrophyMatch(unmatched) {
@@ -823,10 +826,13 @@ const GamesPage = (() => {
 
   function renderTrophyMatchStep() {
     const item = _trophyMatchQueue[_trophyMatchIndex];
+    if (!item) return;
     const total = _trophyMatchQueue.length;
     _trophyMatchSelectedId = null;
 
-    document.getElementById('trophyMatchStepLabel').textContent =
+    const stepLabel = document.getElementById('trophyMatchStepLabel');
+    if (!stepLabel) { console.error('trophyMatchStepLabel not found in DOM'); return; }
+    stepLabel.textContent =
       `Trophy title ${_trophyMatchIndex + 1} of ${total} — these titles have trophy data on PSN but no matching game in your library.`;
 
     // PSN game info block
