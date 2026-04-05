@@ -817,7 +817,7 @@ const GamesPage = (() => {
     _trophyMatchPsGames = allGames.filter(g =>
       (g.platform || '').startsWith('PlayStation') || (g.platform || '').startsWith('PS')
     );
-    document.getElementById('trophyMatchModal').style.display = '';
+    openModal('trophyMatchModal');
     renderTrophyMatchStep();
   }
 
@@ -930,7 +930,7 @@ const GamesPage = (() => {
   }
 
   function closeTrophyMatch() {
-    document.getElementById('trophyMatchModal').style.display = 'none';
+    closeModal('trophyMatchModal');
     _trophyMatchQueue = [];
     _trophyMatchIndex = 0;
     _trophyMatchSelectedId = null;
